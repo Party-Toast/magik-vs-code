@@ -63,10 +63,10 @@ async function showLayeredProductPicker(gisVersion: vscode.QuickPickItem) {
 		["detail"]: layeredProduct.path
 	}))
 
-	layeredProductPicker.onDidChangeSelection(layeredProducts => {
+	layeredProductPicker.onDidChangeSelection(selectedLayeredProducts => {
 		layeredProductPicker.enabled = false
 		layeredProductPicker.busy = true
-		showGisAliasPicker(layeredProducts[0], gisVersion)
+		showGisAliasPicker(selectedLayeredProducts[0], gisVersion)
 	})
 	layeredProductPicker.onDidHide(() => {
 		layeredProductPicker.dispose()
@@ -89,8 +89,15 @@ function showGisAliasPicker(layeredProduct: vscode.QuickPickItem, gisVersion: vs
 		["description"]: gisAlias.title
 	}))
 
-	gisAliasPicker.onDidChangeSelection(gisAlias => {
-		console.log(gisAlias)
+	gisAliasPicker.onDidChangeSelection(selectedGisAliases => {
+		const environmentPath = `${layeredProduct.detail!}\\config\\environment.bat`
+		const gisAliasPath = `${layeredProduct.detail!}\\config\\gis_aliases`
+		if(fs.existsSync(environmentPath)) {
+			startMagikSession(gisVersion.detail!, gisAliasPath, selectedGisAliases[0].label!, environmentPath)
+		}
+		else {
+			startMagikSession(gisVersion.detail!, gisAliasPath, selectedGisAliases[0].label!)
+		}
 	})
 	gisAliasPicker.onDidHide(() => {
 		gisAliasPicker.dispose()
@@ -99,13 +106,24 @@ function showGisAliasPicker(layeredProduct: vscode.QuickPickItem, gisVersion: vs
 	gisAliasPicker.show()
 }
 
-function startSession(gisVersionPath: string, gisAliasPath: string, gisAlias: string, envPath?: string) {
-
+function startMagikSession(gisVersionPath: string, gisAliasPath: string, gisAliasName: string, environmentPath?: string) {
+	// TODO: Check overloading createTerminal with options: vscode.ExtensionTerminalOptions
+	// 		 This should allow for the extension to control the terminal
+	// TODO: Check if "Magik Session" terminal already exists instead of always creating a new one
+	const magikSessionTerminal = vscode.window.createTerminal("Magik Session")
+	magikSessionTerminal.show()
+	
+	// TODO: when executing runalias.exe, remember to check if environment.bat exists and is added using the -e flag
+	let startCommand = `${gisVersionPath}\\bin\\x86\\runalias.exe -a ${gisAliasPath} ${gisAliasName}`
+	if(environmentPath) {
+		startCommand = `${startCommand} -e ${environmentPath}`
+	}
+	magikSessionTerminal.sendText(startCommand.replaceAll("\\", "/"))
 }
 
 const parseLayeredProducts = (gisVersion: vscode.QuickPickItem) => {
 	const gisVersionPath = gisVersion.detail!
-	const layeredProductsRaw = fs.readFileSync(`${gisVersionPath} \\..\\smallworld_registry\\LAYERED_PRODUCTS`, "utf-8")
+	const layeredProductsRaw = fs.readFileSync(`${gisVersionPath}\\..\\smallworld_registry\\LAYERED_PRODUCTS`, "utf-8")
 	return layeredProductsRaw
     	.split(/\r?\n(?=\w+:)/)
 		.map(productRaw => {
@@ -151,5 +169,3 @@ const parseGisAliases = (layeredProduct: vscode.QuickPickItem, gisVersion: vscod
 			return gisAlias
 		})
 }
-
-// TODO: when executing runalias.exe, remember to check if environment.bat exists and is added using the -e flag
