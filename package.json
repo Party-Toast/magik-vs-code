@@ -14,10 +14,20 @@
   "contributes": {
     "commands": [
       {
-        "command": "magik-vs-code.helloWorld",
-        "title": "Hello World"
+        "command": "magik-vs-code.startSession",
+        "title": "Magik: Start Session"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Magik VS Code settings",
+      "properties": {
+        "magik-vs-code.gisVersions": {
+          "type": "array",
+          "default": [],
+          "description": "A collection of GIS versions which can be used to start a session."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
