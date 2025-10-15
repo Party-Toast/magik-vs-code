@@ -23,6 +23,29 @@
       "properties": {
         "magik-vs-code.gisVersions": {
           "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { 
+                "type": "string", 
+                "description": "Name of the GIS installation."
+              },
+              "version": { 
+                "type": "string",
+                "description": "GIS version."
+              },
+              "path": { 
+                "type": "string",
+                "description": "Path to the 'core' directory of the GIS installation" 
+              }
+            },
+            "required": [
+              "name", 
+              "version", 
+              "path"
+            ],
+            "additionalProperties": false
+          },
           "default": [],
           "description": "A collection of GIS versions which can be used to start a session."
         }

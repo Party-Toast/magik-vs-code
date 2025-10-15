@@ -21,6 +21,15 @@ export function deactivate() {}
 function showGisVersionPicker() {
 	const gisVersions = config.get('gisVersions') as GisVersion[]
 
+	if(gisVersions.length === 0) {
+		vscode.window.showWarningMessage("No GIS versions found", "Open Settings").then(selection => {
+			if (selection === "Open Settings") {
+				vscode.commands.executeCommand('workbench.action.openSettings', 'magik-vs-code.gisVersions')
+			}
+		})
+		return
+	}
+
 	const gisVersionPicker = vscode.window.createQuickPick<GenericQuickPickItem<GisVersion>>()
 	gisVersionPicker.step = 1
 	gisVersionPicker.totalSteps = 3
