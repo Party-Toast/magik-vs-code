@@ -1,7 +1,7 @@
 export interface GisVersion {
     name: string
     version?: string
-    directory: string
+    path: string
 }
 
 export interface LayeredProduct {
@@ -24,5 +24,4 @@ export interface GisAlias {
     SW_CONSTRUCTION_PACK_DIR?: string
     SW_JOB_SERVER_LOGGING_OUTPUT?: string
     SW_LAUNCH_JAVA_ARGS?: string
-
 }
