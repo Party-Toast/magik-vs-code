@@ -45,6 +45,16 @@ function showGisVersionPicker() {
 		gisVersionPicker.busy = true
 
 		const gisVersion = selectedQuickPickItems[0].data
+		const runaliasPath = `${gisVersion.path}\\bin\\x86\\runalias.exe`
+
+		if(!fs.existsSync(runaliasPath)) {
+			vscode.window.showErrorMessage(`${runaliasPath} not found`, "Open Settings").then(selection => {
+				if (selection === "Open Settings") {
+					vscode.commands.executeCommand('workbench.action.openSettings', 'magik-vs-code.gisVersions')
+				}
+			})
+		}
+
 		showLayeredProductPicker(gisVersion)
 	})
 	gisVersionPicker.onDidHide(() => {
