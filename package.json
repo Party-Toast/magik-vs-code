@@ -26,22 +26,22 @@
           "items": {
             "type": "object",
             "properties": {
-              "name": { 
-                "type": "string", 
+              "name": {
+                "type": "string",
                 "description": "Name of the GIS installation."
               },
-              "version": { 
+              "version": {
                 "type": "string",
                 "description": "GIS version."
               },
-              "path": { 
+              "path": {
                 "type": "string",
-                "description": "Path to the 'core' directory of the GIS installation" 
+                "description": "Path to the 'core' directory of the GIS installation"
               }
             },
             "required": [
-              "name", 
-              "version", 
+              "name",
+              "version",
               "path"
             ],
             "additionalProperties": false
@@ -64,17 +64,17 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.103.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "@types/vscode": "^1.103.0",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
-    "eslint": "^9.32.0",
-    "typescript": "^5.9.2",
-    "ts-loader": "^9.5.2",
-    "webpack": "^5.101.0",
-    "webpack-cli": "^6.0.1",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.32.0",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.9.2",
+    "webpack": "^5.101.0",
+    "webpack-cli": "^6.0.1"
   }
 }

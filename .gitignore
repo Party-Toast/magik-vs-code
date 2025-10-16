@@ -9,8 +9,8 @@ yarn.lock
 # Compiled output
 out/
 dist/
-*.js
-*.js.map
+# *.js
+# *.js.map
 
 # TypeScript build info
 *.tsbuildinfo
