@@ -72,7 +72,6 @@ async function showLayeredProductPicker(gisVersion: GisVersion) {
 	// TODO: For some reason, sw_core's config is one dir up, (in /core instead of /core/sw_core)
 	//		 Check why this is and how this can be fixed
 	const layeredProductsWithGisAliases = layeredProducts.filter(layeredProduct => {
-		console.log(layeredProduct)
 		const gisAliasesPath = `${layeredProduct.path}\\config\\gis_aliases`
 		return fs.existsSync(gisAliasesPath)
 	})
@@ -131,73 +130,13 @@ function showGisAliasPicker(layeredProduct: LayeredProduct, gisVersion: GisVersi
 	gisAliasPicker.show()
 }
 
-function startMagikSession(gisVersionPath: string, gisAliasPath: string, gisAliasName: string, environmentPath?: string) {
+async function startMagikSession(gisVersionPath: string, gisAliasPath: string, gisAliasName: string, environmentPath?: string) {
 	const runaliasPath = `${gisVersionPath}\\bin\\x86\\runalias.exe`
 	const runaliasArgs = ["-a", `${gisAliasPath}`, `${gisAliasName}`]
 	if(environmentPath) {
 		runaliasArgs.push("-e", environmentPath)
 	}
-
-	/* Webview "terminal"
 	
-	const panel = vscode.window.createWebviewPanel("webviewTerminal", "Magik Session", vscode.ViewColumn.One, { 
-		enableScripts: true
-	})
-
-	// Resolve webview assets (CSS/JS)
-	const scriptUri = panel.webview.asWebviewUri(
-		vscode.Uri.file(path.join(getContext().extensionPath, "media", "terminal.js"))
-	)
-	const cssUri = panel.webview.asWebviewUri(
-		vscode.Uri.file(path.join(getContext().extensionPath, "media", "terminal.css"))
-	)
-
-	const xtermCss = "https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"
-	const xtermJs = "https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"
-	
-	panel.webview.html = `
-	<!DOCTYPE html>
-	<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<link rel="stylesheet" href="${xtermCss}">
-		<link rel="stylesheet" href="${cssUri}">
-		<script src="${xtermJs}"></script>
-	</head>
-	<body>
-		<div id="terminal"></div>
-		<script src="${scriptUri}"></script>
-	</body>
-	</html>
-	`
-	
-	const magikProcess = spawn(runaliasPath, runaliasArgs, {
-		shell: false
-	})
-	
-	magikProcess.stdout.on("data", data => {
-		panel.webview.postMessage({ 
-			type: "output", 
-			data: data.toString() 
-		})
-	})
-	
-	panel.webview.onDidReceiveMessage(msg => {
-		if (msg.type === "input") {
-			magikProcess.stdin.write(msg.data)
-		}
-		console.log(msg)
-	})
-	
-	panel.onDidDispose(() => {
-		if(!magikProcess.killed) {
-			magikProcess.kill()
-		}
-	})
-
-	*/
-
 	const magikSessionTerminal = vscode.window.createTerminal({
 		name: "Magik Session",
 		iconPath: new vscode.ThemeIcon("wand"),
@@ -205,40 +144,6 @@ function startMagikSession(gisVersionPath: string, gisAliasPath: string, gisAlia
 		shellArgs: runaliasArgs
 	})
 	magikSessionTerminal.show()
-
-	/* Extension terminal
-
-	const writeEmitter = new vscode.EventEmitter<string>()
-	const magikSessionPseudoTerminal: vscode.Pseudoterminal = {
-		onDidWrite: writeEmitter.event,
-		open: () => writeEmitter.fire('echo \x1b[31mHello world\x1b[0m'),
-		close: () => {},
-		handleInput: (data) => {
-			if (data === '\x7f' || data === '\b') {
-				console.log("backspace")
-				// Remove last character from buffer
-				// buffer = buffer.slice(0, -1);
-				// Move cursor left and erase character visually
-				writeEmitter.fire('\x1b[D \x1b[D');
-			} 
-			writeEmitter.fire(data === '\r' ? '\r\n' : data)
-			console.log(data)
-		}
-	}
-	const magikSessionTerminalOptions: vscode.ExtensionTerminalOptions = {
-		name: "Magik Session",
-		pty: magikSessionPseudoTerminal,
-		iconPath: new vscode.ThemeIcon("wand")
-	}
-	const magikSessionTerminal = vscode.window.createTerminal(magikSessionTerminalOptions)
-	magikSessionTerminal.show()
-	
-	let startCommand = `${gisVersionPath}\\bin\\x86\\runalias.exe -a ${gisAliasPath} ${gisAliasName}`
-	if(environmentPath) {
-		startCommand = `${startCommand} -e ${environmentPath}`
-	}
-	magikSessionTerminal.sendText(startCommand.replaceAll("\\", "/"), false)
-	*/
 }
 
 const parseLayeredProducts = (gisVersion: GisVersion): LayeredProduct[] => {
