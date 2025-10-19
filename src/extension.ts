@@ -6,17 +6,56 @@ import { setContext, setState, getState, getContext } from './state'
 import { GenericQuickPickItem } from './classes/GenericQuickPickItem'
 import { GisAlias, GisVersion, LayeredProduct } from './interface'
 import { spawn } from 'child_process'
+import { MagikCodeLensProvider } from './classes/MagikCodeLensProvider'
 
 const config = vscode.workspace.getConfiguration("magik-vs-code")
 
 export function activate(context: vscode.ExtensionContext) {
 	setContext(context)
 	
-	const disposable = vscode.commands.registerCommand("magik-vs-code.startSession", () => {
+	const startSessionCommand = vscode.commands.registerCommand("magik-vs-code.startSession", () => {
 		showGisVersionPicker()
 	});
+
+	const sendToSessionCommand = vscode.commands.registerCommand("magik-vs-code.sendToSession", (range: vscode.Range) => {
+		const editor = vscode.window.activeTextEditor
+		if(!editor) {
+			return 
+		}
+
+		const magikSessionPID = getState("MAGIK_SESSION_PID") as number | undefined
+		if(!magikSessionPID) {
+			vscode.window.showInformationMessage("No active Magik session.")
+			return
+		}
+
+		const magikSessionTerminal = vscode.window.terminals.find(async terminal => await terminal.processId === magikSessionPID)
+		if(!magikSessionTerminal) {
+			vscode.window.showInformationMessage("Magik session no longer active, please start a new one.")
+			return
+		}
+
+		const text = editor.document.getText(range)
+		const workspaceFolders = vscode.workspace.workspaceFolders;
+		if (!workspaceFolders || workspaceFolders.length === 0) {
+			vscode.window.showErrorMessage("Unable to find workspace folder folder.")
+			return
+		}
+
+		const rootPath = workspaceFolders[0].uri.fsPath;
+		const tempFilePath = path.join(rootPath, "temp.txt");
+
+		fs.writeFileSync(tempFilePath, text, { encoding: "utf8" });
+		magikSessionTerminal.sendText(text)
+		fs.rmSync(tempFilePath)
+	})
+
+	const magikCodeLensProvider = vscode.languages.registerCodeLensProvider({
+		scheme: 'file',
+		language: 'magik'
+	}, new MagikCodeLensProvider())
 	
-	context.subscriptions.push(disposable);
+	context.subscriptions.push(startSessionCommand, sendToSessionCommand, magikCodeLensProvider);
 }
 
 export function deactivate() {}
@@ -144,6 +183,7 @@ async function startMagikSession(gisVersionPath: string, gisAliasPath: string, g
 		shellArgs: runaliasArgs
 	})
 	magikSessionTerminal.show()
+	setState("MAGIK_SESSION_PID", await magikSessionTerminal.processId)
 }
 
 const parseLayeredProducts = (gisVersion: GisVersion): LayeredProduct[] => {
