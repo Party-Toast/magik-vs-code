@@ -24,6 +24,14 @@
         "title": "Magik: Start Session"
       },
       {
+        "command": "magik-vs-code.selectLayeredProduct",
+        "title": "Magik: Select Layered Product"
+      },
+      {
+        "command": "magik-vs-code.selectGisAlias",
+        "title": "Magik: Select GIS Alias"
+      },
+      {
         "command": "magik-vs-code.sendSectionToSession",
         "title": "Magik: Send Section To Session",
         "enablement": "false"

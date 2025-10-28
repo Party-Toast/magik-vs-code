@@ -1,187 +1,27 @@
 import * as vscode from 'vscode'
-import * as fs from 'fs'
-import * as path from 'path'
-import * as os from 'os'
 
-import { setContext, setState, getState, getContext } from './state'
-import { GenericQuickPickItem } from './classes/GenericQuickPickItem'
-import { GisAlias, GisVersion, LayeredProduct } from './interfaces'
+import { setContext } from './state'
 import { MagikCodeLensProvider } from './classes/MagikCodeLensProvider'
-import { parseLayeredProducts, parseGisAliases } from './parsers'
-
-const config = vscode.workspace.getConfiguration('magik-vs-code')
+import { showGisAliasPicker, showGisVersionPicker, showLayeredProductPicker } from './user_interface'
+import { sendSectionToSession } from './magik_session'
 
 export function activate(context: vscode.ExtensionContext) {
 	setContext(context)
-	
-	const startSessionCommand = vscode.commands.registerCommand('magik-vs-code.startSession', () => {
-		showGisVersionPicker()
-	})
-
-	const sendToSessionCommand = vscode.commands.registerCommand('magik-vs-code.sendSectionToSession', (range: vscode.Range) => {
-		if(range === undefined) {
-			return
-		}
-
-		const editor = vscode.window.activeTextEditor
-		if(!editor) {
-			return 
-		}
-
-		const magikSessionPID = getState('MAGIK_SESSION_PID') as number | undefined
-		if(!magikSessionPID) {
-			vscode.window.showInformationMessage('No active Magik session.')
-			return
-		}
-
-		const magikSessionTerminal = vscode.window.terminals.find(async terminal => await terminal.processId === magikSessionPID && terminal.name === 'Magik Session')
-		if(!magikSessionTerminal) {
-			vscode.window.showInformationMessage('Magik session no longer active, please start a new one.')
-			return
-		}
-
-		const text = editor.document.getText(range)
-		const workspaceFolders = vscode.workspace.workspaceFolders
-		if (!workspaceFolders || workspaceFolders.length === 0) {
-			vscode.window.showErrorMessage('Unable to find workspace folder.')
-			return
-		}
-
-		const tempFilePath = path.join(os.tmpdir(), 'sessionBuffer.magik')
-		fs.writeFileSync(tempFilePath, text, { encoding: 'utf8' })
-		magikSessionTerminal.sendText(`load_file("${tempFilePath}")`)
-	})
-
-	const magikCodeLensProvider = vscode.languages.registerCodeLensProvider({
-		scheme: 'file',
-		language: 'magik'
-	}, new MagikCodeLensProvider())
-	
-	context.subscriptions.push(startSessionCommand, sendToSessionCommand, magikCodeLensProvider)
+	registerDisposables(context)
 }
 
 export function deactivate() {}
 
-function showGisVersionPicker() {
-	const gisVersions = config.get('gisVersions') as GisVersion[]
-	
-	if(gisVersions.length === 0) {
-		vscode.window.showWarningMessage('No GIS versions found', 'Open Settings').then(selection => {
-			if (selection === 'Open Settings') {
-				vscode.commands.executeCommand('workbench.action.openSettings', 'magik-vs-code.gisVersions')
-			}
-		})
-		return
-	}
-	
-	const gisVersionPicker = vscode.window.createQuickPick<GenericQuickPickItem<GisVersion>>()
-	gisVersionPicker.step = 1
-	gisVersionPicker.totalSteps = 3
-	gisVersionPicker.title = 'Select GIS version'
-	gisVersionPicker.placeholder = 'Search'
-	gisVersionPicker.matchOnDescription = true
-	gisVersionPicker.items = gisVersions.map(gisVersion => (
-		new GenericQuickPickItem(gisVersion, 'name', 'version', 'path')
-	))
-	
-	gisVersionPicker.onDidChangeSelection(selectedQuickPickItems => {
-		gisVersionPicker.enabled = false
-		gisVersionPicker.busy = true
-		
-		const gisVersion = selectedQuickPickItems[0].data
-		const runaliasPath = `${gisVersion.path}\\bin\\x86\\runalias.exe`
-		
-		if(!fs.existsSync(runaliasPath)) {
-			vscode.window.showErrorMessage(`${runaliasPath} not found`, 'Open Settings').then(selection => {
-				if (selection === 'Open Settings') {
-					vscode.commands.executeCommand('workbench.action.openSettings', 'magik-vs-code.gisVersions')
-				}
-			})
-		}
-		
-		showLayeredProductPicker(gisVersion)
-	})
-	gisVersionPicker.onDidHide(() => {
-		gisVersionPicker.dispose()
-	})
-	
-	gisVersionPicker.show()
-}
-
-async function showLayeredProductPicker(gisVersion: GisVersion) {
-	const layeredProducts = parseLayeredProducts(gisVersion)
-	const layeredProductsWithGisAliases = layeredProducts.filter(layeredProduct => {
-		const gisAliasesPath = `${layeredProduct.path}\\config\\gis_aliases`
-		return fs.existsSync(gisAliasesPath)
-	})
-	
-	const layeredProductPicker = vscode.window.createQuickPick<GenericQuickPickItem<LayeredProduct>>()
-	layeredProductPicker.step = 2
-	layeredProductPicker.totalSteps = 3
-	layeredProductPicker.title = 'Select a layered product with GIS aliases'
-	layeredProductPicker.placeholder = 'Search'
-	layeredProductPicker.items = layeredProductsWithGisAliases.map(layeredProduct => (
-		new GenericQuickPickItem(layeredProduct, 'name', 'version', 'path')
-	))
-	
-	layeredProductPicker.onDidChangeSelection(selectedQuickPickItems => {
-		layeredProductPicker.enabled = false
-		layeredProductPicker.busy = true
-		
-		const layeredProduct = selectedQuickPickItems[0].data
-		showGisAliasPicker(layeredProduct, gisVersion)
-	})
-	layeredProductPicker.onDidHide(() => {
-		layeredProductPicker.dispose()
-	})
-	
-	layeredProductPicker.show()
-}
-
-function showGisAliasPicker(layeredProduct: LayeredProduct, gisVersion: GisVersion) {
-	const gisAliases = parseGisAliases(layeredProduct, gisVersion)
-	
-	const gisAliasPicker = vscode.window.createQuickPick<GenericQuickPickItem<GisAlias>>()
-	gisAliasPicker.step = 3
-	gisAliasPicker.totalSteps = 3
-	gisAliasPicker.title = 'Select a GIS alias'
-	gisAliasPicker.placeholder = 'Search'
-	gisAliasPicker.matchOnDescription = true
-	gisAliasPicker.items = gisAliases.map(gisAlias => (
-		new GenericQuickPickItem(gisAlias, 'name', 'title')
-	))
-	
-	gisAliasPicker.onDidChangeSelection(selectedQuickPickItems => {
-		const selectedGisAlias = selectedQuickPickItems[0].data
-		const environmentPath = `${layeredProduct.path}\\config\\environment.bat`
-		const gisAliasPath = `${layeredProduct.path}\\config\\gis_aliases`
-		if(fs.existsSync(environmentPath)) {
-			startMagikSession(gisVersion.path, gisAliasPath, selectedGisAlias.name, environmentPath)
-		}
-		else {
-			startMagikSession(gisVersion.path, gisAliasPath, selectedGisAlias.name)
-		}
-	})
-	gisAliasPicker.onDidHide(() => {
-		gisAliasPicker.dispose()
-	})
-	
-	gisAliasPicker.show()
-}
-
-async function startMagikSession(gisVersionPath: string, gisAliasPath: string, gisAliasName: string, environmentPath?: string) {
-	const runaliasPath = `${gisVersionPath}\\bin\\x86\\runalias.exe`
-	const runaliasArgs = ['-a', `${gisAliasPath}`, `${gisAliasName}`]
-	if(environmentPath) {
-		runaliasArgs.push('-e', environmentPath)
-	}
-
-	const magikSessionTerminal = vscode.window.createTerminal({
-		name: 'Magik Session',
-		iconPath: new vscode.ThemeIcon('wand'),
-		shellPath: runaliasPath,
-		shellArgs: runaliasArgs
-	})
-	magikSessionTerminal.show()
-	setState('MAGIK_SESSION_PID', await magikSessionTerminal.processId)
+function registerDisposables(context: vscode.ExtensionContext) {
+	context.subscriptions.push(
+		vscode.commands.registerCommand('magik-vs-code.startSession', showGisVersionPicker),
+		vscode.commands.registerCommand('magik-vs-code.selectLayeredProduct', showLayeredProductPicker),
+		vscode.commands.registerCommand('magik-vs-code.selectGisAlias', showGisAliasPicker),
+		// TODO: maybe use registerTextEditorCommand
+		vscode.commands.registerCommand('magik-vs-code.sendSectionToSession', sendSectionToSession),
+		vscode.languages.registerCodeLensProvider({
+			scheme: 'file',
+			language: 'magik'
+		}, new MagikCodeLensProvider())
+	)
 }
