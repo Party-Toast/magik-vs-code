@@ -1,0 +1,30 @@
+{
+    "comments": {
+        "lineComment": {
+            "comment": "#",
+            "noIndent": false
+        }
+    },
+    "brackets": [
+        ["(", ")"],
+        ["[", "]"],
+        ["{", "}"]
+    ],
+    "autoClosingPairs": [
+        { "open": "{", "close": "}" },
+        { "open": "[", "close": "]" },
+        { "open": "(", "close": ")" },
+        { "open": "\"", "close": "\"", "notIn": ["string", "comment"] }
+    ],
+    "surroundingPairs": [
+        ["{", "}"],
+        ["[", "]"],
+        ["(", ")"],
+        ["\"", "\""]
+    ],
+    "wordPattern": "", // TODO
+    "indentationRules": {
+        "increaseIndentPattern": "^\\s*(?:_method|_then|_loop).*", // Should also indent on def_slotted_exemplar, defined_shared_constant
+        "decreaseIndentPattern": "^\\s*(?:_endmethod|_endif|_endloop).*", 
+    }
+}

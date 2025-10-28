@@ -9,15 +9,13 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onLanguage:magik"
-  ],
   "main": "./dist/extension.js",
   "contributes": {
     "languages": [
       {
         "id": "magik",
-        "extensions": [".magik"]
+        "extensions": [".magik"],
+        "configuration": "./magik-language-configuration.json"
       }
     ],
     "commands": [
@@ -26,8 +24,9 @@
         "title": "Magik: Start Session"
       },
       {
-        "command": "magik-vs-code.sendToSession",
-        "title": "Magik: Send To Session"
+        "command": "magik-vs-code.sendSectionToSession",
+        "title": "Magik: Send Section To Session",
+        "enablement": "false"
       }
     ],
     "configuration": {

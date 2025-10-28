@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 
 let extensionContext: vscode.ExtensionContext | undefined
 
-type ValidStates = "GIS_VERSION" | "LAYERED_PRODUCT" | "GIS_ALIAS" | "MAGIK_SESSION_PID"
+type ValidStates = 'GIS_VERSION' | 'LAYERED_PRODUCT' | 'GIS_ALIAS' | 'MAGIK_SESSION_PID'
 
 export function setContext(context: vscode.ExtensionContext) {
     extensionContext = context
