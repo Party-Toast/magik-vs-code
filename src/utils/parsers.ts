@@ -7,6 +7,7 @@ import { GisAlias } from '../interfaces/GisAlias'
 export function parseLayeredProducts(gisVersion: GisVersion): LayeredProduct[] {
 	const layeredProductsRaw = fs.readFileSync(`${gisVersion.path}\\..\\smallworld_registry\\LAYERED_PRODUCTS`, 'utf-8')
 	return layeredProductsRaw
+		.trim()
 		.split(/\r?\n(?=\w+:)/)
 		.map(productRaw => {
 			const lines = productRaw.split('\n').map(line => line.trim())

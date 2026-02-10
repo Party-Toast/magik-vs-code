@@ -87,9 +87,7 @@ export class MagikSession {
                     this.eventEmitter.emit('magik-ready', this.currentOutput)
                     this.currentOutput = []
                     this.hideNextOutput = false
-                    this.cellExecution?.appendOutput([
-                        new vscode.NotebookCellOutput([vscode.NotebookCellOutputItem.stdout('\n')])
-                    ])
+                    this.appendOutput('\n')
                     this.cellExecution?.end(true, Date.now())
                     this.cellExecution = undefined
                     this.updateStatusBar(false)
