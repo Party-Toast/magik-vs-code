@@ -23,6 +23,7 @@ export class MagikSession {
 
     process!: ChildProcessWithoutNullStreams
     notebook!: vscode.NotebookDocument
+    notebookEditor!: vscode.NotebookEditor
     lastExecutedCell?: vscode.NotebookCell
     cellExecution?: vscode.NotebookCellExecution
     currentOutput: string[]
@@ -43,14 +44,14 @@ export class MagikSession {
         this.eventEmitter = new EventEmitter()
         this.currentOutput = []
         this.hideNextOutput = false
-        this.startProcess()
-        this.createStatusBarItem()
+        // this.startProcess()
+        // this.createStatusBarItem()
         this.createNotebook()
-        this.enableCommands()
+        // this.enableCommands()
     }
 
     isActive() {
-        return !this.process.killed
+        return this.process.exitCode === null && this.process.killed === false
     }
 
     private startProcess() {
@@ -74,6 +75,12 @@ export class MagikSession {
         lineReader.on('line', this.processSessionLine.bind(this))
 
         this.process.stdout.on('data', this.processSessionData.bind(this))
+
+        this.process.stdout.on('close', () => {
+            if(this.cellExecution) {
+                this.cellExecution.end(undefined, Date.now())
+            }
+        })
     }
 
     async showKillPrompt() {
@@ -90,31 +97,53 @@ export class MagikSession {
         }
     }
 
-    private kill() {
-        this.process.kill()
+    async kill() {
         this.classBrowser?.toggleWebviewInputs(false)
+        if(this.isActive()) {
+            await this.send('quit()')
+        }
+        this.process.kill()
     }
 
     private async createNotebook() {
-        this.notebook = await vscode.workspace.openNotebookDocument(magikNotebookController.notebookType)
-        vscode.workspace.onDidCloseNotebookDocument(notebook => {
-            if(notebook === this.notebook && this.isActive()) {
-                this.showKillPrompt()
-            }
+
+        console.log(vscode.workspace.notebookDocuments.map(doc => ({
+            uri: doc.uri.toString(),
+            type: doc.notebookType
+        })))
+
+        const notebook = await vscode.workspace.openNotebookDocument(magikNotebookController.notebookType)
+
+        console.log(vscode.workspace.notebookDocuments.map(doc => ({
+            uri: doc.uri.toString(),
+            type: doc.notebookType
+        })))
+
+        const editor = await vscode.window.showNotebookDocument(notebook, {
+            asRepl: 'Magik Session'
         })
 
-        await this.showNotebook()
-        await vscode.commands.executeCommand('notebook.cell.execute', {
-            ranges: [new vscode.NotebookRange(0, 1)],
-            document: this.notebook.uri
-        })
+        console.log(notebook, editor)
+        // vscode.workspace.onDidCloseNotebookDocument(notebook => {
+        //     if(notebook === this.notebook && this.isActive()) {
+        //         this.showKillPrompt()
+        //     }
+        // })
+
+        // await this.showNotebook()
+        // await vscode.commands.executeCommand('notebook.cell.execute', {
+        //     ranges: [new vscode.NotebookRange(0, 1)],
+        //     document: this.notebook.uri
+        // })
 
     }
 
     async showNotebook() {
-        await vscode.window.showNotebookDocument(this.notebook)
-        await vscode.commands.executeCommand('notebook.focusBottom')
-        await vscode.commands.executeCommand('notebook.cell.edit')
+        this.notebookEditor = await vscode.window.showNotebookDocument(this.notebook, {
+            asRepl: 'Magik REPL'
+        })
+        // await vscode.commands.executeCommand('notebook.focusBottom')
+        // await vscode.commands.executeCommand('notebook.cell.edit')
     }
 
     private enableCommands() {

@@ -15,13 +15,13 @@ export function activate(context: vscode.ExtensionContext) {
 	registerDisposables(context)
 }
 
-export function deactivate() {
-	magikSession?.process.kill()
+export async function deactivate() {
+	await magikSession?.kill()
 }
 
 function registerDisposables(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
-		vscode.workspace.registerNotebookSerializer('magik-notebook', new MagikNotebookSerializer()),
+		vscode.workspace.registerNotebookSerializer('jupyter-notebook', new MagikNotebookSerializer()),
 		magikNotebookController,
 		vscode.commands.registerCommand('magik-vs-code.startSession', showGisVersionPicker),
 		vscode.commands.registerCommand('magik-vs-code.selectLayeredProduct', showLayeredProductPicker),
@@ -47,23 +47,38 @@ class MagikNotebookSerializer implements vscode.NotebookSerializer {
 	}
 }
 
-export const magikNotebookController = vscode.notebooks.createNotebookController('magik-notebook-kernel', 'magik-notebook', "Magik Notebook Kernel")
-magikNotebookController.executeHandler = async (cells: vscode.NotebookCell[], notebook: vscode.NotebookDocument, controller: vscode.NotebookController) => {
+export const magikNotebookController = vscode.notebooks.createNotebookController('magik-notebook-kernel', 'jupyter-notebook', "Magik Notebook Kernel")
+magikNotebookController.executeHandler = async (cells, notebook, controller) => {
 	for(const cell of cells) {
-		await magikSession.send(cell.document.getText(), cell)
+		// vscode.workspace.notebookDocuments.find(doc => doc.notebookType === 'jupyter-notebook')?.getCells().filter(c => c.document.languageId === 'plaintext')?.forEach(c => {
+		// 	vscode.languages.setTextDocumentLanguage(cell.document, 'magik')
+		// })
 
-		if(!config.get<Boolean>('createCellAfterExecution') || cell.index !== notebook.cellCount - 1) {
-			continue
-		}
+		vscode.languages.setTextDocumentLanguage(cell.document, 'magik')
 
-		const newCellText = config.get<Boolean>('copyContentOnCellCreation') ? cell.document.getText() : ''
-		const newCell = new vscode.NotebookCellData(vscode.NotebookCellKind.Code, newCellText, 'magik')
-		const edit = new vscode.WorkspaceEdit()
-		edit.set(notebook.uri, [
-			vscode.NotebookEdit.insertCells(notebook.cellCount, [newCell])
+		const editor = vscode.window.visibleNotebookEditors.find(editor => editor.notebook === notebook)
+
+		const tempExecution  = magikNotebookController.createNotebookCellExecution(cell)
+		tempExecution.start()
+		tempExecution.appendOutput([
+			new vscode.NotebookCellOutput([vscode.NotebookCellOutputItem.stdout('Some test waaaahh')])
 		])
-		await vscode.workspace.applyEdit(edit)
-		await vscode.commands.executeCommand('notebook.focusBottom')
-		await vscode.commands.executeCommand('notebook.cell.edit')
+		tempExecution.end(undefined)
+
+		// await magikSession.send(cell.document.getText(), cell)
+
+		// if(!config.get<Boolean>('createCellAfterExecution') || cell.index !== notebook.cellCount - 1) {
+		// 	continue
+		// }
+
+		// const newCellText = config.get<Boolean>('copyContentOnCellCreation') ? cell.document.getText() : ''
+		// const newCell = new vscode.NotebookCellData(vscode.NotebookCellKind.Code, newCellText, 'magik')
+		// const edit = new vscode.WorkspaceEdit()
+		// edit.set(notebook.uri, [
+		// 	vscode.NotebookEdit.insertCells(notebook.cellCount, [newCell])
+		// ])
+		// await vscode.workspace.applyEdit(edit)
+		// await vscode.commands.executeCommand('notebook.focusBottom')
+		// await vscode.commands.executeCommand('notebook.cell.edit')
 	}
 }

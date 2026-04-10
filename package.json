@@ -34,8 +34,9 @@
     ],
     "notebooks": [
       {
-        "type": "magik-notebook",
-        "displayName": "Magik Notebook",
+        "type": "jupyter-notebook",
+        "displayName": "Magik REPL",
+        "priority": "default",
         "selector": [
           {
             "filenamePattern": "*.magik-notebook"
