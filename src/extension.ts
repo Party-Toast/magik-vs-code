@@ -16,7 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-	magikSession?.process.kill()
+	magikSession?.kill(true)
 }
 
 function registerDisposables(context: vscode.ExtensionContext) {
