@@ -58,7 +58,7 @@
           "type": "webview",
           "id": "magik-vs-code.classBrowser",
           "name": "Magik Class Browser",
-          "icon": "$(search)"
+          "icon": "$(wand)"
         }
       ]
     },
