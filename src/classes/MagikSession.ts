@@ -50,7 +50,7 @@ export class MagikSession {
     }
 
     isActive() {
-        return !this.process.killed
+        return this.process.exitCode === null && this.process.killed === false
     }
 
     private startProcess() {
@@ -74,6 +74,12 @@ export class MagikSession {
         lineReader.on('line', this.processSessionLine.bind(this))
 
         this.process.stdout.on('data', this.processSessionData.bind(this))
+
+        this.process.stdout.on('close', () => {
+            if(this.cellExecution) {
+                this.cellExecution.end(undefined, Date.now())
+            }
+        })
     }
 
     async showKillPrompt() {
@@ -81,18 +87,31 @@ export class MagikSession {
             return vscode.window.showInformationMessage('Session has already been killed.')
         }
 
-        const shouldKillProcess = await vscode.window.showQuickPick(['Yes', 'No'], {
-            title: 'Kill the Magik process?'
-        })
+        const options = ['No', 'Yes', 'Yes (force)'] as const
 
-        if(shouldKillProcess === 'Yes') {
-            this.kill()
+        const selected = await vscode.window.showQuickPick(options, {
+            title: 'Kill the Magik process?'
+        }) as typeof options[number] | undefined
+
+        switch(selected) {
+            case 'Yes (force)': 
+                this.kill(true)
+                break
+            case 'Yes':
+                this.kill()
+                break
         }
     }
 
-    private kill() {
-        this.process.kill()
+    async kill(force?: Boolean) {
         this.classBrowser?.toggleWebviewInputs(false)
+
+        if(this.isActive() && !force) {
+            await this.send(`write("Session killed - ${Date()}")`)
+            await this.send('quit()')
+        }
+        
+        this.process.kill()
     }
 
     private async createNotebook() {
@@ -197,10 +216,13 @@ export class MagikSession {
 
             const globalCreationMatch = line.match(Regex.Session.GlobalCreationPrompt)
             if(globalCreationMatch) {
-                const shouldCreateGlobal = await vscode.window.showQuickPick(['Yes', 'No'], {
+                const options = ['Yes', 'No'] as const
+
+                const selected = await vscode.window.showQuickPick(options, {
                     title: globalCreationMatch[1]
-                })
-                this.process.stdin.write(`${shouldCreateGlobal === 'Yes' ? 'y' : 'n'}\r\n`)
+                }) as typeof options[number] | undefined
+
+                this.process.stdin.write(`${selected === 'Yes' ? 'y' : 'n'}\r\n`)
                 break
             }
         }
