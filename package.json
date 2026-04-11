@@ -44,7 +44,7 @@
       }
     ],
     "viewsContainers": {
-      "activitybar": [
+      "panel": [
         {
           "id": "magik-container",
           "title": "Magik",
