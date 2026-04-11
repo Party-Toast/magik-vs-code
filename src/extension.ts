@@ -3,7 +3,7 @@ import { setContext } from './utils/state'
 import { showGisAliasPicker, showGisVersionPicker, showLayeredProductPicker } from './ui/sessionUI'
 import { MagikSession } from './classes/MagikSession'
 import { MagikNotebookSerializer } from './classes/MagikNotebookSerializer'
-import { magikNotebookController } from './classes/MagikNotebookController'
+import { magikNotebookController } from './classes/magikNotebookController'
 
 export const config = vscode.workspace.getConfiguration('magik-vs-code')
 
