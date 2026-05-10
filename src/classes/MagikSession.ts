@@ -15,7 +15,7 @@ import { once } from 'events'
 import { GisVersion } from '../interfaces/GisVersion'
 import { LayeredProduct } from '../interfaces/LayeredProduct'
 
-export class MagikSession {
+export class MagikSession extends vscode.TreeItem {
     gisVersionPath: string
     gisAliasPath: string
     gisAliasName: string
@@ -36,6 +36,8 @@ export class MagikSession {
     eventEmitter: EventEmitter
 
     constructor(gisVersionPath: string, gisAliasPath: string, gisAliasName: string, environmentPath?: string) {
+        super(gisAliasName, vscode.TreeItemCollapsibleState.Expanded)
+        
         this.gisVersionPath = gisVersionPath
         this.gisAliasPath = gisAliasPath
         this.gisAliasName = gisAliasName
@@ -47,6 +49,7 @@ export class MagikSession {
         this.createStatusBarItem()
         this.createNotebook()
         this.enableCommands()
+        // TODO Store session in magikSessions
     }
 
     isActive() {

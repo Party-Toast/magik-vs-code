@@ -46,19 +46,43 @@
     "viewsContainers": {
       "panel": [
         {
-          "id": "magik-container",
+          "id": "magik-panel",
+          "title": "Magik",
+          "icon": "$(wand)"
+        }
+      ],
+      "activitybar": [
+        {
+          "id": "magik-activity-bar",
           "title": "Magik",
           "icon": "$(wand)"
         }
       ]
     },
     "views": {
-      "magik-container": [
+      "magik-panel": [
         {
           "type": "webview",
           "id": "magik-vs-code.classBrowser",
-          "name": "Magik Class Browser",
+          "name": "Class Browser",
           "icon": "$(wand)"
+        }
+      ],
+      "magik-activity-bar": [
+        {
+          "type": "tree",
+          "id": "magik-vs-code.sessionManager",
+          "name": "Session Manager",
+          "icon": "$(wand)"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "magik-vs-code.killSessionFromTree",
+          "when": "view == magik-vs-code.sessionManager",
+          "group": "inline"
         }
       ]
     },
@@ -70,6 +94,11 @@
       {
         "command": "magik-vs-code.killSession",
         "title": "Magik: Kill Session"
+      },
+      {
+        "command": "magik-vs-code.killSessionFromTree",
+        "title": "Magik: Kill Session from Tree",
+        "icon": "$(debug-stop)"
       },
       {
         "command": "magik-vs-code.showSession",
