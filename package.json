@@ -248,18 +248,18 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.3.3",
     "@types/vscode": "^1.109.0",
-    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^8.56.1",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.7.1",
-    "eslint": "^10.1.0",
+    "eslint": "^10.2.1",
     "ts-loader": "^9.5.2",
-    "typescript": "^5.9.2",
+    "typescript": "^6.0.3",
     "webpack": "^5.105.3",
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
-    "@vscode/codicons": "^0.0.44"
+    "@vscode/codicons": "^0.0.45"
   }
 }
