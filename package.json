@@ -80,29 +80,66 @@
     "menus": {
       "view/item/context": [
         {
-          "command": "magik-vs-code.killSessionFromTree",
-          "when": "view == magik-vs-code.sessionManager",
+          "command": "magik-vs-code.killSession",
+          "when": "view == magik-vs-code.sessionManager && viewItem == ActiveSession",
           "group": "inline"
+        },
+        {
+          "command": "magik-vs-code.restartSession",
+          "when": "view == magik-vs-code.sessionManager && viewItem == KilledSession",
+          "group": "inline"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "magik-vs-code.startSession",
+          "when": "view == magik-vs-code.sessionManager",
+          "group": "navigation"
+        },
+        {
+          "command": "magik-vs-code.configureGisVersions",
+          "when": "view == magik-vs-code.sessionManager",
+          "group": "navigation"
+        },
+        {
+          "command": "magik-vs-code.refreshSessionManager",
+          "when": "view == magik-vs-code.sessionManager",
+          "group": "navigation"
         }
       ]
     },
     "commands": [
       {
         "command": "magik-vs-code.startSession",
-        "title": "Magik: Start Session"
+        "title": "Magik: Start Session",
+        "shortTitle": "Start Session",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "magik-vs-code.restartSession",
+        "title": "Magik: Restart Session",
+        "shortTitle": "Restart Session",
+        "icon": "$(debug-restart)"
       },
       {
         "command": "magik-vs-code.killSession",
-        "title": "Magik: Kill Session"
+        "title": "Magik: Kill Session",
+        "icon": "$(debug-stop)"
       },
       {
-        "command": "magik-vs-code.killSessionFromTree",
-        "title": "Magik: Kill Session from Tree",
-        "icon": "$(debug-stop)"
+        "command": "magik-vs-code.configureGisVersions",
+        "title": "Configure GIS Versions",
+        "icon": "$(settings)"
       },
       {
         "command": "magik-vs-code.showSession",
         "title": "Magik: Show Session"
+      },
+      {
+        "command": "magik-vs-code.refreshSessionManager",
+        "title": "Magik: Refresh Session Manager",
+        "shortTitle": "Refresh",
+        "icon": "$(refresh)"
       },
       {
         "command": "magik-vs-code.selectLayeredProduct",

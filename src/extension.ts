@@ -4,61 +4,30 @@ import { showGisAliasPicker, showGisVersionPicker, showLayeredProductPicker } fr
 import { MagikSession } from './classes/MagikSession'
 import { MagikNotebookSerializer } from './classes/MagikNotebookSerializer'
 import { magikNotebookController } from './classes/magikNotebookController'
+import { MagikSessionManager } from './classes/MagikSessionManager'
 
 export const config = vscode.workspace.getConfiguration('magik-vs-code')
 
-export let magikSession: MagikSession
-
-export const magikSessions: MagikSession[] = []
-
-export function setMagikSession(session: MagikSession) {
-	magikSession = session
-}
+export let sessionManager: MagikSessionManager
 
 export function activate(context: vscode.ExtensionContext) {
 	setContext(context)
+    sessionManager = new MagikSessionManager()
 	registerDisposables(context)
 }
 
 export function deactivate() {
-	magikSession?.kill(true)
+    sessionManager.sessions.forEach(session => session.kill(true))
 }
 
 function registerDisposables(context: vscode.ExtensionContext) {
-	context.subscriptions.push(
-		vscode.workspace.registerNotebookSerializer('magik-notebook', new MagikNotebookSerializer()),
-		magikNotebookController,
-		vscode.commands.registerCommand('magik-vs-code.startSession', showGisVersionPicker),
-		vscode.commands.registerCommand('magik-vs-code.selectLayeredProduct', showLayeredProductPicker),
-		vscode.commands.registerCommand('magik-vs-code.selectGisAlias', showGisAliasPicker),
-		vscode.window.registerTreeDataProvider('magik-vs-code.sessionManager', new MagikSessionTreeDataProvider()),
-		vscode.commands.registerCommand('magik-vs-code.killSessionFromTree', (item: MagikSessionTreeItem) => {
-			vscode.window.showInformationMessage(`Selected ${item.label}`)
-		})
-	)
+    context.subscriptions.push(
+        vscode.workspace.registerNotebookSerializer('magik-notebook', new MagikNotebookSerializer()),
+        magikNotebookController,
+        vscode.commands.registerCommand('magik-vs-code.startSession', showGisVersionPicker),
+        vscode.commands.registerCommand('magik-vs-code.selectLayeredProduct', showLayeredProductPicker),
+        vscode.commands.registerCommand('magik-vs-code.selectGisAlias', showGisAliasPicker),
+        vscode.window.registerTreeDataProvider('magik-vs-code.sessionManager', sessionManager),
+    )
 }
 
-class MagikSessionTreeItem extends vscode.TreeItem {
-  constructor(label: string, collapsible: vscode.TreeItemCollapsibleState) {
-    super(label, collapsible)
-  }
-}
-
-class MagikSessionTreeDataProvider implements vscode.TreeDataProvider<MagikSessionTreeItem> {
-  getTreeItem(element: MagikSessionTreeItem): vscode.TreeItem {
-    return element
-  }
-
-  getChildren(element?: MagikSessionTreeItem): MagikSessionTreeItem[] {
-    if (element) {
-      return [
-        new MagikSessionTreeItem('Prompt', vscode.TreeItemCollapsibleState.None),
-        new MagikSessionTreeItem('Class Browser', vscode.TreeItemCollapsibleState.None)
-      ]
-    }
-    return [
-      new MagikSessionTreeItem('personal | sw_core | base', vscode.TreeItemCollapsibleState.Collapsed),
-      new MagikSessionTreeItem('Cambridge DB open', vscode.TreeItemCollapsibleState.Collapsed)
-    ]
-  }
-}

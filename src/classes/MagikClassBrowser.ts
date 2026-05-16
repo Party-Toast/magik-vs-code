@@ -2,10 +2,11 @@ import * as vscode from 'vscode'
 import { getContext } from '../utils/state'
 import { createInterface } from 'readline'
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process'
-import { config, magikSession } from '../extension'
+import { config } from '../extension'
 import path from 'path'
 import { Regex } from '../enums/Regex'
 import { MagikClassBrowserMethod } from './MagikClassBrowserMethod'
+import { MagikSession } from './MagikSession'
 
 export class MagikClassBrowser implements vscode.WebviewViewProvider {
     processID: number
@@ -27,11 +28,11 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
     }
     methodBuffer: MagikClassBrowserMethod[] = []
 
-    constructor(processID: number) {
+    constructor(processID: number, magikSession: MagikSession) {
         this.context = getContext()
         this.processID = processID
         this.searchParameters.maxResults = config.get<number>('classBrowserMaxResults')!
-        this.start()
+        this.start(magikSession.gisVersionPath)
         this.enableCommands()
     }
 
@@ -44,9 +45,9 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
         vscode.commands.executeCommand('setContext', 'magik-vs-code.classBrowserIsActive', true)
     }
 
-    private start() {
-        const methodFinderPath = path.join(magikSession.gisVersionPath, 'etc', 'x86', 'mf_connector.exe')
-        // TODO: Use method_finder.socket_pathname instead of hardcoding pipe
+    private start(gisVersionPath: string) {
+        const methodFinderPath = path.join(gisVersionPath, 'etc', 'x86', 'mf_connector.exe')
+        // TODO: Use method_finder.socket_pathname instead of hardcoding pipe. This also returns the ID, making the original call obsolete
         const startCommand = `${methodFinderPath} -m //./pipe/method_finder/${this.processID}`
         this.process = spawn(startCommand, {
             shell: true

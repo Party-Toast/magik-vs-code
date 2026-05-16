@@ -14,8 +14,9 @@ import { EventEmitter } from 'stream'
 import { once } from 'events'
 import { GisVersion } from '../interfaces/GisVersion'
 import { LayeredProduct } from '../interfaces/LayeredProduct'
+import { sessionManager } from '../extension'
 
-export class MagikSession extends vscode.TreeItem {
+export class MagikSession {
     gisVersionPath: string
     gisAliasPath: string
     gisAliasName: string
@@ -36,8 +37,6 @@ export class MagikSession extends vscode.TreeItem {
     eventEmitter: EventEmitter
 
     constructor(gisVersionPath: string, gisAliasPath: string, gisAliasName: string, environmentPath?: string) {
-        super(gisAliasName, vscode.TreeItemCollapsibleState.Expanded)
-        
         this.gisVersionPath = gisVersionPath
         this.gisAliasPath = gisAliasPath
         this.gisAliasName = gisAliasName
@@ -49,7 +48,6 @@ export class MagikSession extends vscode.TreeItem {
         this.createStatusBarItem()
         this.createNotebook()
         this.enableCommands()
-        // TODO Store session in magikSessions
     }
 
     isActive() {
@@ -82,6 +80,7 @@ export class MagikSession extends vscode.TreeItem {
             if(this.cellExecution) {
                 this.cellExecution.end(undefined, Date.now())
             }
+            sessionManager.refresh()
         })
     }
 
@@ -119,11 +118,11 @@ export class MagikSession extends vscode.TreeItem {
 
     private async createNotebook() {
         this.notebook = await vscode.workspace.openNotebookDocument(magikNotebookController.notebookType)
-        vscode.workspace.onDidCloseNotebookDocument(notebook => {
-            if(notebook === this.notebook && this.isActive()) {
-                this.showKillPrompt()
-            }
-        })
+        // vscode.workspace.onDidCloseNotebookDocument(notebook => {
+        //     if(notebook === this.notebook && this.isActive()) {
+        //         this.showKillPrompt()
+        //     }
+        // })
 
         await this.showNotebook()
         await vscode.commands.executeCommand('notebook.cell.execute', {
@@ -140,21 +139,6 @@ export class MagikSession extends vscode.TreeItem {
     }
 
     private enableCommands() {
-        this.codeLensProvider = new MagikCodeLensProvider()
-        const context = getContext()
-        context.subscriptions.push(
-            vscode.commands.registerCommand('magik-vs-code.killSession', this.showKillPrompt, this),
-            vscode.commands.registerCommand('magik-vs-code.sendSectionToSession', this.sendSection, this),
-            vscode.commands.registerTextEditorCommand('magik-vs-code.sendSectionAtCurrentPositionToSession', this.sendSectionAtCurrentPosition, this),
-            vscode.commands.registerCommand('magik-vs-code.sendFileToSession', this.sendSection, this),
-            vscode.commands.registerCommand('magik-vs-code.removeExemplar', this.removeExemplar, this),
-            vscode.commands.registerCommand('magik-vs-code.showSession', this.showNotebook, this),
-            vscode.commands.registerCommand('magik-vs-code.showClassBrowser', this.showClassBrowser, this),
-            vscode.languages.registerCodeLensProvider({
-                scheme: 'file',
-                language: 'magik'
-            }, this.codeLensProvider)
-        )
         // Enables keybindings with 'magik-vs-code.sessionIsActive' when-clause
         vscode.commands.executeCommand('setContext', 'magik-vs-code.sessionIsActive', true)
     }
@@ -172,24 +156,6 @@ export class MagikSession extends vscode.TreeItem {
     private updateStatusBar(loading: Boolean) {
         const icon = loading ? 'sync~spin' : 'wand'
         this.statusBarItem.text = `$(${icon}) Magik Session Active`
-    }
-
-    async sendSectionAtCurrentPosition(editor: vscode.TextEditor) {
-        const index = editor.selection.active.line
-        const codeLens = this.codeLensProvider.codeLenses.find(codeLens => {
-            return codeLens.range.contains(new vscode.Position(index, 0))
-        })
-
-        if(!codeLens) {
-            return vscode.window.showWarningMessage('Not within range of item to send.')
-        }
-
-        await vscode.commands.executeCommand('magik-vs-code.sendSectionToSession', ...codeLens.command!.arguments ?? [])
-
-        // DEBUG: Highlight code lens range
-        // editor.setDecorations(vscode.window.createTextEditorDecorationType({
-        //     backgroundColor: '#ee3355ff'
-        // }), [codeLens.range])
     }
 
     /**
@@ -243,10 +209,6 @@ export class MagikSession extends vscode.TreeItem {
         await this.send(`load_file("${tempFilePath}", _unset, "${editor.document.uri.path}")`)
     }
 
-    async removeExemplar(exemplarName: string) {
-        await this.send(`remex(${exemplarName})`)
-    }
-
     /**
      * Shows the class browser. If @see classBrowser is not yet set, starts it first.
      */
@@ -259,7 +221,7 @@ export class MagikSession extends vscode.TreeItem {
                 vscode.window.showErrorMessage('Unable to start class browser, please try again.')
                 return
             }
-            this.classBrowser = new MagikClassBrowser(Number(processID))
+            this.classBrowser = new MagikClassBrowser(Number(processID), this)
         }
         this.classBrowser.show()
     }
