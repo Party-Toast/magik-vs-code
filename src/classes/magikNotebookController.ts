@@ -4,7 +4,6 @@ import { config, sessionManager } from '../extension'
 export const magikNotebookController = vscode.notebooks.createNotebookController('magik-notebook-kernel', 'magik-notebook', "Magik Notebook Kernel")
 
 magikNotebookController.executeHandler = async (cells: vscode.NotebookCell[], notebook: vscode.NotebookDocument, controller: vscode.NotebookController) => {
-	// FIXME: temp
 	const magikSession = sessionManager.sessions.find(session => session.notebook === notebook)
 	if(!magikSession) {
 		return

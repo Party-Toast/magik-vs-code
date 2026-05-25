@@ -24,20 +24,24 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
         const context = getContext()
         context.subscriptions.push(
             vscode.commands.registerCommand('magik-vs-code.refreshSessionManager', this.refresh, this),
+            vscode.commands.registerCommand('magik-vs-code.showPrompt', this.showPrompt, this),
+            vscode.commands.registerCommand('magik-vs-code.showClassBrowser', this.showClassBrowser, this),
+            vscode.commands.registerCommand('magik-vs-code.restartSession', this.restartSession, this),
             vscode.commands.registerCommand('magik-vs-code.killSession', this.killSession, this),
+            vscode.commands.registerCommand('magik-vs-code.setCurrentSession', this.setCurrentSession, this),
+            vscode.commands.registerCommand('magik-vs-code.removeSession', this.removeSession, this),
             vscode.commands.registerTextEditorCommand('magik-vs-code.sendSectionToSession', this.sendSection, this),
             vscode.commands.registerTextEditorCommand('magik-vs-code.sendFileToSession', this.sendSection, this),
             vscode.commands.registerTextEditorCommand('magik-vs-code.sendSectionAtCurrentPositionToSession', this.sendSectionAtCurrentPosition, this),
             vscode.commands.registerCommand('magik-vs-code.removeExemplar', this.removeExemplar, this),
             vscode.commands.registerCommand('magik-vs-code.configureGisVersions', this.configureGisVersions, this),
-            // TODO
-            // vscode.commands.registerCommand('magik-vs-code.restartSession, this.restartSession, this),
-            // vscode.commands.registerCommand('magik-vs-code.showSession', this.showNotebook, this),
-            // vscode.commands.registerCommand('magik-vs-code.showClassBrowser', this.showClassBrowser, this),
             vscode.languages.registerCodeLensProvider({
                 scheme: 'file',
                 language: 'magik'
             }, this.codeLensProvider)
+            // TODO: Instead of instantiating a class browser for every session (which does not work), reuse a single class browser webview
+            // It should start along with the mession manager. It must be clear to which session the class browser belongs
+
         )
     }
     
@@ -59,37 +63,83 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
     }
 
     refresh() {
+        const activeSessions = this.sessions.filter(session => session.isActive())
+        
+        if(activeSessions.length === 0) {
+            this.currentSession = undefined
+        }
+        else if(!this.currentSession || !activeSessions.includes(this.currentSession)) {
+            this.currentSession = activeSessions[0]
+        }
+
         this._onDidChangeTreeData.fire()
     }
     
     addSession(session: MagikSession) {
-        if(this.sessions.length === 0) {
-            this.currentSession = session
-        }
-
         this.sessions.push(session)
 
         this.refresh()
     }
+
+    async showPrompt(session: MagikSession | undefined) {
+        (session ?? this.currentSession)?.showNotebook()
+    }
+
+    async showClassBrowser(session: MagikSession | undefined) {
+        (session ?? this.currentSession)?.showClassBrowser()
+    }
+
+    async restartSession(treeItem: MagikSessionTreeItem) {
+        if(treeItem.session.isActive()) {
+            vscode.window.showWarningMessage('Cannot restart an active session.')
+            return
+        }
+
+        await treeItem.session.restart()
+
+        this.refresh()
+    }
     
-    async killSession(treeItem: MagikSessionTreeItem) {
+    async killSession(treeItem: MagikSessionTreeItem | undefined) {
+        const session = treeItem?.session ?? this.currentSession
+
+        if(!session) {
+            vscode.window.showInformationMessage('No current session')
+            return
+        }
+
         const options = ['No', 'Yes', 'Yes (force)'] as const
 
         const selected = await vscode.window.showQuickPick(options, {
-            title: 'Kill the Magik process?'
+            title: 'Kill the current Magik session?'
         }) as typeof options[number] | undefined
 
         if(!selected || selected === 'No') {
             return
         }
 
-        await treeItem.session.kill(selected === 'Yes (force)')
+        await session.kill(selected === 'Yes (force)')
+        this.refresh()
+    }
+
+    setCurrentSession(treeItem: MagikSessionTreeItem) {
+        this.currentSession = treeItem.session
+        this.refresh()
+    }
+
+    async removeSession(treeItem: MagikSessionTreeItem) {
+        if(treeItem.session.isActive()) {
+            vscode.window.showWarningMessage('Cannot remove an active session. Kill it first.')
+            return
+        }
+
+        this.sessions = this.sessions.filter(session => session !== treeItem.session)
         this.refresh()
     }
 
     async sendSection(editor: vscode.TextEditor, edit: vscode.TextEditorEdit, range: vscode.Range) {
         if(!this.currentSession) {
-            vscode.window.showInformationMessage("No current session")
+            vscode.window.showInformationMessage('No current session')
             return
         }
 

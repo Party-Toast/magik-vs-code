@@ -29,10 +29,7 @@ export class MagikSession {
     currentOutput: string[]
     hideNextOutput: Boolean
 
-    codeLensProvider!: MagikCodeLensProvider
     classBrowser?: MagikClassBrowser
-
-    statusBarItem!: vscode.StatusBarItem
 
     eventEmitter: EventEmitter
 
@@ -45,9 +42,7 @@ export class MagikSession {
         this.currentOutput = []
         this.hideNextOutput = false
         this.startProcess()
-        this.createStatusBarItem()
         this.createNotebook()
-        this.enableCommands()
     }
 
     isActive() {
@@ -73,15 +68,8 @@ export class MagikSession {
         })
 
         lineReader.on('line', this.processSessionLine.bind(this))
-
         this.process.stdout.on('data', this.processSessionData.bind(this))
-
-        this.process.stdout.on('close', () => {
-            if(this.cellExecution) {
-                this.cellExecution.end(undefined, Date.now())
-            }
-            sessionManager.refresh()
-        })
+        this.process.on('exit', this.processSessionExit.bind(this))
     }
 
     async showKillPrompt() {
@@ -116,20 +104,24 @@ export class MagikSession {
         this.process.kill()
     }
 
+    async restart() {
+        this.startProcess()
+        await this.showNotebook()
+        const cellCount = this.notebook.cellCount
+        await vscode.commands.executeCommand('notebook.cell.execute', {
+            ranges: [new vscode.NotebookRange(cellCount - 1, cellCount)],
+            document: this.notebook.uri
+        })
+    }
+
     private async createNotebook() {
         this.notebook = await vscode.workspace.openNotebookDocument(magikNotebookController.notebookType)
-        // vscode.workspace.onDidCloseNotebookDocument(notebook => {
-        //     if(notebook === this.notebook && this.isActive()) {
-        //         this.showKillPrompt()
-        //     }
-        // })
 
         await this.showNotebook()
         await vscode.commands.executeCommand('notebook.cell.execute', {
             ranges: [new vscode.NotebookRange(0, 1)],
             document: this.notebook.uri
         })
-
     }
 
     async showNotebook() {
@@ -138,24 +130,12 @@ export class MagikSession {
         await vscode.commands.executeCommand('notebook.cell.edit')
     }
 
-    private enableCommands() {
-        // Enables keybindings with 'magik-vs-code.sessionIsActive' when-clause
-        vscode.commands.executeCommand('setContext', 'magik-vs-code.sessionIsActive', true)
-    }
-
-    private createStatusBarItem() {
-        this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -100)
-        const gisVersion = getState<GisVersion>('GIS_VERSION')
-        const layeredProduct = getState<LayeredProduct>('LAYERED_PRODUCT')
-        this.updateStatusBar(false)
-        this.statusBarItem.tooltip = `${gisVersion?.name} | ${layeredProduct?.name} | ${this.gisAliasName}`
-        this.statusBarItem.command = 'magik-vs-code.showSession'
-        this.statusBarItem.show()
-    }
-
-    private updateStatusBar(loading: Boolean) {
-        const icon = loading ? 'sync~spin' : 'wand'
-        this.statusBarItem.text = `$(${icon}) Magik Session Active`
+    private processSessionExit() {
+        if(this.cellExecution) {
+            this.cellExecution.end(undefined, Date.now())
+        }
+        this.eventEmitter.emit('magik-ready', this.currentOutput)
+        sessionManager.refresh()
     }
 
     /**
@@ -179,7 +159,6 @@ export class MagikSession {
                 this.appendOutput('\n')
                 this.cellExecution?.end(true, Date.now())
                 this.cellExecution = undefined
-                this.updateStatusBar(false)
                 break
             }
 
@@ -240,7 +219,6 @@ export class MagikSession {
             return Promise.reject()
         }
         
-        this.updateStatusBar(true)
         this.hideNextOutput = hideOutput
 
         this.lastExecutedCell = cell ?? this.lastExecutedCell!
