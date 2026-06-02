@@ -14,6 +14,7 @@ import { EventEmitter } from 'stream'
 import { once } from 'events'
 import { GisVersion } from '../interfaces/GisVersion'
 import { LayeredProduct } from '../interfaces/LayeredProduct'
+import { sessionManager } from '../extension'
 
 export class MagikSession {
     gisVersionPath: string
@@ -28,10 +29,7 @@ export class MagikSession {
     currentOutput: string[]
     hideNextOutput: Boolean
 
-    codeLensProvider!: MagikCodeLensProvider
     classBrowser?: MagikClassBrowser
-
-    statusBarItem!: vscode.StatusBarItem
 
     eventEmitter: EventEmitter
 
@@ -44,9 +42,7 @@ export class MagikSession {
         this.currentOutput = []
         this.hideNextOutput = false
         this.startProcess()
-        this.createStatusBarItem()
         this.createNotebook()
-        this.enableCommands()
     }
 
     isActive() {
@@ -72,14 +68,8 @@ export class MagikSession {
         })
 
         lineReader.on('line', this.processSessionLine.bind(this))
-
         this.process.stdout.on('data', this.processSessionData.bind(this))
-
-        this.process.stdout.on('close', () => {
-            if(this.cellExecution) {
-                this.cellExecution.end(undefined, Date.now())
-            }
-        })
+        this.process.on('exit', this.processSessionExit.bind(this))
     }
 
     async showKillPrompt() {
@@ -114,20 +104,26 @@ export class MagikSession {
         this.process.kill()
     }
 
+    async restart() {
+        this.startProcess()
+        await this.showNotebook()
+        await vscode.commands.executeCommand('notebook.focusBottom')
+        await vscode.commands.executeCommand('notebook.cell.insertCodeCellBelow')
+        const cellCount = this.notebook.cellCount
+        await vscode.commands.executeCommand('notebook.cell.execute', {
+            ranges: [new vscode.NotebookRange(cellCount - 1, cellCount)],
+            document: this.notebook.uri
+        })
+    }
+
     private async createNotebook() {
         this.notebook = await vscode.workspace.openNotebookDocument(magikNotebookController.notebookType)
-        vscode.workspace.onDidCloseNotebookDocument(notebook => {
-            if(notebook === this.notebook && this.isActive()) {
-                this.showKillPrompt()
-            }
-        })
 
         await this.showNotebook()
         await vscode.commands.executeCommand('notebook.cell.execute', {
             ranges: [new vscode.NotebookRange(0, 1)],
             document: this.notebook.uri
         })
-
     }
 
     async showNotebook() {
@@ -136,57 +132,12 @@ export class MagikSession {
         await vscode.commands.executeCommand('notebook.cell.edit')
     }
 
-    private enableCommands() {
-        this.codeLensProvider = new MagikCodeLensProvider()
-        const context = getContext()
-        context.subscriptions.push(
-            vscode.commands.registerCommand('magik-vs-code.killSession', this.showKillPrompt, this),
-            vscode.commands.registerCommand('magik-vs-code.sendSectionToSession', this.sendSection, this),
-            vscode.commands.registerTextEditorCommand('magik-vs-code.sendSectionAtCurrentPositionToSession', this.sendSectionAtCurrentPosition, this),
-            vscode.commands.registerCommand('magik-vs-code.sendFileToSession', this.sendSection, this),
-            vscode.commands.registerCommand('magik-vs-code.removeExemplar', this.removeExemplar, this),
-            vscode.commands.registerCommand('magik-vs-code.showSession', this.showNotebook, this),
-            vscode.commands.registerCommand('magik-vs-code.showClassBrowser', this.showClassBrowser, this),
-            vscode.languages.registerCodeLensProvider({
-                scheme: 'file',
-                language: 'magik'
-            }, this.codeLensProvider)
-        )
-        // Enables keybindings with 'magik-vs-code.sessionIsActive' when-clause
-        vscode.commands.executeCommand('setContext', 'magik-vs-code.sessionIsActive', true)
-    }
-
-    private createStatusBarItem() {
-        this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -100)
-        const gisVersion = getState<GisVersion>('GIS_VERSION')
-        const layeredProduct = getState<LayeredProduct>('LAYERED_PRODUCT')
-        this.updateStatusBar(false)
-        this.statusBarItem.tooltip = `${gisVersion?.name} | ${layeredProduct?.name} | ${this.gisAliasName}`
-        this.statusBarItem.command = 'magik-vs-code.showSession'
-        this.statusBarItem.show()
-    }
-
-    private updateStatusBar(loading: Boolean) {
-        const icon = loading ? 'sync~spin' : 'wand'
-        this.statusBarItem.text = `$(${icon}) Magik Session Active`
-    }
-
-    async sendSectionAtCurrentPosition(editor: vscode.TextEditor) {
-        const index = editor.selection.active.line
-        const codeLens = this.codeLensProvider.codeLenses.find(codeLens => {
-            return codeLens.range.contains(new vscode.Position(index, 0))
-        })
-
-        if(!codeLens) {
-            return vscode.window.showWarningMessage('Not within range of item to send.')
+    private processSessionExit() {
+        if(this.cellExecution) {
+            this.cellExecution.end(undefined, Date.now())
         }
-
-        await vscode.commands.executeCommand('magik-vs-code.sendSectionToSession', ...codeLens.command!.arguments ?? [])
-
-        // DEBUG: Highlight code lens range
-        // editor.setDecorations(vscode.window.createTextEditorDecorationType({
-        //     backgroundColor: '#ee3355ff'
-        // }), [codeLens.range])
+        this.eventEmitter.emit('magik-ready', this.currentOutput)
+        sessionManager.refresh()
     }
 
     /**
@@ -210,7 +161,6 @@ export class MagikSession {
                 this.appendOutput('\n')
                 this.cellExecution?.end(true, Date.now())
                 this.cellExecution = undefined
-                this.updateStatusBar(false)
                 break
             }
 
@@ -240,10 +190,6 @@ export class MagikSession {
         await this.send(`load_file("${tempFilePath}", _unset, "${editor.document.uri.path}")`)
     }
 
-    async removeExemplar(exemplarName: string) {
-        await this.send(`remex(${exemplarName})`)
-    }
-
     /**
      * Shows the class browser. If @see classBrowser is not yet set, starts it first.
      */
@@ -256,7 +202,7 @@ export class MagikSession {
                 vscode.window.showErrorMessage('Unable to start class browser, please try again.')
                 return
             }
-            this.classBrowser = new MagikClassBrowser(Number(processID))
+            this.classBrowser = new MagikClassBrowser(Number(processID), this)
         }
         this.classBrowser.show()
     }
@@ -275,7 +221,6 @@ export class MagikSession {
             return Promise.reject()
         }
         
-        this.updateStatusBar(true)
         this.hideNextOutput = hideOutput
 
         this.lastExecutedCell = cell ?? this.lastExecutedCell!

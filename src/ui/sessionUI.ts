@@ -7,7 +7,7 @@ import { MagikSession } from '../classes/MagikSession'
 import { GisVersion } from '../interfaces/GisVersion'
 import { LayeredProduct } from '../interfaces/LayeredProduct'
 import { GisAlias } from '../interfaces/GisAlias'
-import { config, setMagikSession } from '../extension'
+import { config, sessionManager } from '../extension'
 
 export function showGisVersionPicker() {
 	const gisVersions = config.get<GisVersion[]>('gisVersions')!
@@ -136,13 +136,10 @@ export function showGisAliasPicker() {
 		const selectedGisAlias = selectedQuickPickItems[0].data
 		const environmentPath = `${layeredProduct.path}\\config\\environment.bat`
 		const gisAliasPath = `${layeredProduct.path}\\config\\gis_aliases`
+		
+		const magikSession = new MagikSession(gisVersion.path, gisAliasPath, selectedGisAlias.name, fs.existsSync(environmentPath) ? environmentPath : undefined)
 
-		if(fs.existsSync(environmentPath)) {
-			setMagikSession(new MagikSession(gisVersion.path, gisAliasPath, selectedGisAlias.name, environmentPath))
-		}
-		else {
-			setMagikSession(new MagikSession(gisVersion.path, gisAliasPath, selectedGisAlias.name))
-		}
+		sessionManager.addSession(magikSession)
 	})
 
 	gisAliasPicker.onDidHide(() => {

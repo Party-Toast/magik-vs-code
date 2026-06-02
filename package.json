@@ -46,34 +46,118 @@
     "viewsContainers": {
       "panel": [
         {
-          "id": "magik-container",
+          "id": "magik-panel",
+          "title": "Magik",
+          "icon": "$(wand)"
+        }
+      ],
+      "activitybar": [
+        {
+          "id": "magik-activity-bar",
           "title": "Magik",
           "icon": "$(wand)"
         }
       ]
     },
     "views": {
-      "magik-container": [
+      "magik-panel": [
         {
           "type": "webview",
           "id": "magik-vs-code.classBrowser",
-          "name": "Magik Class Browser",
+          "name": "Class Browser",
           "icon": "$(wand)"
+        }
+      ],
+      "magik-activity-bar": [
+        {
+          "type": "tree",
+          "id": "magik-vs-code.sessionManager",
+          "name": "Session Manager",
+          "icon": "$(wand)"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "magik-vs-code.killSession",
+          "when": "view == magik-vs-code.sessionManager && viewItem == ActiveSession",
+          "group": "inline@1"
+        },
+        {
+          "command": "magik-vs-code.setCurrentSession",
+          "when": "view == magik-vs-code.sessionManager && viewItem == ActiveSession",
+          "group": "inline@2"
+        },
+        {
+          "command": "magik-vs-code.restartSession",
+          "when": "view == magik-vs-code.sessionManager && viewItem == KilledSession",
+          "group": "inline@1"
+        },
+        {
+          "command": "magik-vs-code.removeSession",
+          "when": "view == magik-vs-code.sessionManager && viewItem == KilledSession",
+          "group": "inline@2"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "magik-vs-code.startSession",
+          "when": "view == magik-vs-code.sessionManager",
+          "group": "navigation@1"
+        },
+        {
+          "command": "magik-vs-code.refreshSessionManager",
+          "when": "view == magik-vs-code.sessionManager",
+          "group": "navigation@2"
+        },
+        {
+          "command": "magik-vs-code.configureGisVersions",
+          "when": "view == magik-vs-code.sessionManager",
+          "group": "navigation@3"
         }
       ]
     },
     "commands": [
       {
         "command": "magik-vs-code.startSession",
-        "title": "Magik: Start Session"
+        "title": "Magik: Start Session",
+        "shortTitle": "Start Session",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "magik-vs-code.setCurrentSession",
+        "title": "Magik: Set Current Session",
+        "shortTitle": "Set Current Session",
+        "icon": "$(debug-connected)"
+      },
+      {
+        "command": "magik-vs-code.restartSession",
+        "title": "Magik: Restart Session",
+        "shortTitle": "Restart Session",
+        "icon": "$(debug-restart)"
       },
       {
         "command": "magik-vs-code.killSession",
-        "title": "Magik: Kill Session"
+        "title": "Magik: Kill Session",
+        "icon": "$(debug-stop)"
       },
       {
-        "command": "magik-vs-code.showSession",
-        "title": "Magik: Show Session"
+        "command": "magik-vs-code.removeSession",
+        "title": "Magik: Remove Session",
+        "shortTitle": "Remove Session",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "magik-vs-code.configureGisVersions",
+        "title": "Magik: Configure GIS Versions",
+        "icon": "$(settings)"
+      },
+      {
+        "command": "magik-vs-code.refreshSessionManager",
+        "title": "Magik: Refresh Session Manager",
+        "shortTitle": "Refresh",
+        "icon": "$(refresh)"
       },
       {
         "command": "magik-vs-code.selectLayeredProduct",
@@ -97,6 +181,10 @@
         "title": "Magik: Send File to Session"
       },
       {
+        "command": "magik-vs-code.showPrompt",
+        "title": "Magik: Show Prompt"
+      },
+      {
         "command": "magik-vs-code.showClassBrowser",
         "title": "Magik: Show Class Browser"
       },
@@ -107,49 +195,47 @@
     ],
     "keybindings": [
       {
-        "command": "magik-vs-code.showSession",
-        "key": "f2 z",
-        "when": "magik-vs-code.sessionIsActive"
-      },
-      {
         "command": "magik-vs-code.sendSectionAtCurrentPositionToSession",
         "key": "f2 enter",
-        "when": "magik-vs-code.sessionIsActive && resourceLangId == magik"
+        "when": "resourceLangId == magik"
       },
       {
         "command": "magik-vs-code.sendFileToSession",
         "key": "f2 b",
-        "when": "magik-vs-code.sessionIsActive && resourceLangId == magik"
+        "when": "resourceLangId == magik"
       },
       {
         "key": "f2 p",
         "command": "notebook.focusPreviousEditor",
-        "when": "magik-vs-code.sessionIsActive && config.notebook.navigation.allowNavigateToSurroundingCells && editorTextFocus && inputFocus && notebookEditorFocused && !accessibilityModeEnabled && !isEmbeddedDiffEditor"
+        "when": "config.notebook.navigation.allowNavigateToSurroundingCells && editorTextFocus && inputFocus && notebookEditorFocused && !accessibilityModeEnabled && !isEmbeddedDiffEditor"
       },
       {
         "key": "alt+p",
         "command": "notebook.focusPreviousEditor",
-        "when": "magik-vs-code.sessionIsActive && config.notebook.navigation.allowNavigateToSurroundingCells && editorTextFocus && inputFocus && notebookEditorFocused && !accessibilityModeEnabled && !isEmbeddedDiffEditor"
+        "when": "config.notebook.navigation.allowNavigateToSurroundingCells && editorTextFocus && inputFocus && notebookEditorFocused && !accessibilityModeEnabled && !isEmbeddedDiffEditor"
       },
       {
         "key": "f2 n",
         "command": "notebook.focusNextEditor",
-        "when": "magik-vs-code.sessionIsActive && config.notebook.navigation.allowNavigateToSurroundingCells && editorTextFocus && inputFocus && notebookEditorFocused && !accessibilityModeEnabled && !isEmbeddedDiffEditor"
+        "when": "config.notebook.navigation.allowNavigateToSurroundingCells && editorTextFocus && inputFocus && notebookEditorFocused && !accessibilityModeEnabled && !isEmbeddedDiffEditor"
       },
       {
         "key": "alt+n",
         "command": "notebook.focusNextEditor",
-        "when": "magik-vs-code.sessionIsActive && config.notebook.navigation.allowNavigateToSurroundingCells && editorTextFocus && inputFocus && notebookEditorFocused && !accessibilityModeEnabled && !isEmbeddedDiffEditor"
+        "when": "config.notebook.navigation.allowNavigateToSurroundingCells && editorTextFocus && inputFocus && notebookEditorFocused && !accessibilityModeEnabled && !isEmbeddedDiffEditor"
       },
       {
         "key": "f8",
         "command": "notebook.cell.execute",
-        "when": "magik-vs-code.sessionIsActive && notebookCellListFocused && notebookMissingKernelExtension && !notebookCellExecuting && notebookCellType == 'code' && notebookType == magik-notebook || magik-vs-code.sessionIsActive && notebookCellListFocused && !notebookCellExecuting && notebookCellType == 'code' && notebookKernelCount > 0 && notebookType == magik-notebook || magik-vs-code.sessionIsActive && notebookCellListFocused && !notebookCellExecuting && notebookCellType == 'code' && notebookKernelSourceCount > 0 && notebookType == magik-notebook"
+        "when": "notebookCellListFocused && notebookMissingKernelExtension && !notebookCellExecuting && notebookCellType == 'code' && notebookType == magik-notebook || notebookCellListFocused && !notebookCellExecuting && notebookCellType == 'code' && notebookKernelCount > 0 && notebookType == magik-notebook || notebookCellListFocused && !notebookCellExecuting && notebookCellType == 'code' && notebookKernelSourceCount > 0 && notebookType == magik-notebook"
+      },
+      {
+        "command": "magik-vs-code.showPrompt",
+        "key": "f2 z"
       },
       {
         "key": "f3 f3",
-        "command": "magik-vs-code.showClassBrowser",
-        "when": "magik-vs-code.sessionIsActive"
+        "command": "magik-vs-code.showClassBrowser"
       }
     ],
     "configuration": {
