@@ -47,7 +47,6 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
 
     private start(gisVersionPath: string) {
         const methodFinderPath = path.join(gisVersionPath, 'etc', 'x86', 'mf_connector.exe')
-        // TODO: Use method_finder.socket_pathname instead of hardcoding pipe. This also returns the ID, making the original call obsolete
         const startCommand = `${methodFinderPath} -m //./pipe/method_finder/${this.processID}`
         this.process = spawn(startCommand, {
             shell: true
