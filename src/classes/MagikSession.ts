@@ -107,6 +107,8 @@ export class MagikSession {
     async restart() {
         this.startProcess()
         await this.showNotebook()
+        await vscode.commands.executeCommand('notebook.focusBottom')
+        await vscode.commands.executeCommand('notebook.cell.insertCodeCellBelow')
         const cellCount = this.notebook.cellCount
         await vscode.commands.executeCommand('notebook.cell.execute', {
             ranges: [new vscode.NotebookRange(cellCount - 1, cellCount)],

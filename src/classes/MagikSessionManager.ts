@@ -39,9 +39,6 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
                 scheme: 'file',
                 language: 'magik'
             }, this.codeLensProvider)
-            // TODO: Instead of instantiating a class browser for every session (which does not work), reuse a single class browser webview
-            // It should start along with the mession manager. It must be clear to which session the class browser belongs
-
         )
     }
     
@@ -97,6 +94,7 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
 
         await treeItem.session.restart()
 
+        // FIXME: session might not be considered active yet when refresh is called. Either fix await after restart, or check if process.on('ready') emits anything
         this.refresh()
     }
     

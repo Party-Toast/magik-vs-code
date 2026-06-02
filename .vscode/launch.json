@@ -15,10 +15,10 @@
 			"outFiles": [
 				"${workspaceFolder}/dist/**/*.js"
 			],
-			"preLaunchTask": "${defaultBuildTask}",
-			"env": {
-				"SMALLWORLD_GIS": "D:\\workspace\\sytse.walraven\\Smallworld\\535\\core",
-			}
+			"preLaunchTask": "${defaultBuildTask}"
+			// "env": {
+			// 	"SMALLWORLD_GIS": "D:\\workspace\\sytse.walraven\\Smallworld\\535\\core",
+			// }
 		}
 	]
 }

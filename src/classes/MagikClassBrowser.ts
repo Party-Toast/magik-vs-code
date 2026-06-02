@@ -212,7 +212,6 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
             'show_topics',
             'override_topics',
             this.searchParameters.local ? 'local_only' : 'inherit_all',
-            // 'override_flags', // This overrides the search parameters below, but also shows methods without pragma/flags
             this.searchParameters.basic ? 'add basic' : 'unadd basic',
             this.searchParameters.advanced ? 'add advanced' : 'unadd advanced',
             this.searchParameters.restricted ? 'add restricted' : 'unadd restricted',
