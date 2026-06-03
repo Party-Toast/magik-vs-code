@@ -9,8 +9,7 @@ import { MagikClassBrowserMethod } from './MagikClassBrowserMethod'
 import { MagikSession } from './MagikSession'
 
 export class MagikClassBrowser implements vscode.WebviewViewProvider {
-    processID: number
-    private process?: ChildProcessWithoutNullStreams
+    private session?: MagikSession
     context: vscode.ExtensionContext
     view?: vscode.WebviewView
     searchParameters = {
@@ -28,11 +27,9 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
     }
     methodBuffer: MagikClassBrowserMethod[] = []
 
-    constructor(processID: number, magikSession: MagikSession) {
+    constructor() {
         this.context = getContext()
-        this.processID = processID
         this.searchParameters.maxResults = config.get<number>('classBrowserMaxResults')!
-        this.start(magikSession.gisVersionPath)
         this.enableCommands()
     }
 
@@ -43,6 +40,12 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
         )
         // Enables keybindings with 'magik-vs-code.classBrowserIsActive' when-clause
         vscode.commands.executeCommand('setContext', 'magik-vs-code.classBrowserIsActive', true)
+    }
+
+    public setSession(session: MagikSession | undefined) {
+        this.session = session
+
+        // TODO: handle session
     }
 
     private start(gisVersionPath: string) {

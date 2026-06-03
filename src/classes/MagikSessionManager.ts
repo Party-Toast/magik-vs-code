@@ -6,16 +6,19 @@ import { MagikCodeLensProvider } from './MagikCodeLensProvider'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import { MagikClassBrowser } from './MagikClassBrowser'
 
 export class MagikSessionManager implements vscode.TreeDataProvider<MagikSessionTreeItem>{
     public sessions: MagikSession[] = []
     public currentSession: MagikSession | undefined
+    public classBrowser: MagikClassBrowser
     public codeLensProvider: MagikCodeLensProvider
     
     private _onDidChangeTreeData = new vscode.EventEmitter<MagikSessionTreeItem | undefined | void>()
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event    
 
     constructor() {
+        this.classBrowser = new MagikClassBrowser()
         this.codeLensProvider = new MagikCodeLensProvider()
         this.registerCommands()
     }
@@ -49,8 +52,7 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
     getChildren(element?: MagikSessionTreeItem): MagikSessionTreeItem[] {
         if (element) {
             return [
-                new MagikSessionTreeItem(element.session, 'Prompt'),
-                new MagikSessionTreeItem(element.session, 'Class Browser')
+                new MagikSessionTreeItem(element.session, 'Prompt')
             ]
         }
 
@@ -69,6 +71,7 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
             this.currentSession = activeSessions[0]
         }
 
+        this.classBrowser.setSession(this.currentSession)
         this._onDidChangeTreeData.fire()
     }
     
@@ -83,7 +86,9 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
     }
 
     async showClassBrowser(session: MagikSession | undefined) {
-        (session ?? this.currentSession)?.showClassBrowser()
+        // (session ?? this.currentSession)?.showClassBrowser()
+        this.classBrowser.setSession(session)
+        this.classBrowser.show()
     }
 
     async restartSession(treeItem: MagikSessionTreeItem) {
