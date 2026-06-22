@@ -50,15 +50,19 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
     }
     
     getChildren(element?: MagikSessionTreeItem): MagikSessionTreeItem[] {
-        if (element) {
-            return [
-                new MagikSessionTreeItem(element.session, 'Prompt')
-            ]
+        if (!element) {
+            return this.sessions.map(session => new MagikSessionTreeItem(session, 'Session'))
         }
 
-        return this.sessions.map(session => {
-            return new MagikSessionTreeItem(session, 'Session')
-        })
+        const childElements = [
+            new MagikSessionTreeItem(element.session, 'Prompt'),
+        ]
+
+        if(element.session.classBrowserInterface) {
+            childElements.push(new MagikSessionTreeItem(element.session, 'Class Browser'))
+        }
+        
+        return childElements
     }
 
     refresh() {
@@ -85,10 +89,15 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
         (session ?? this.currentSession)?.showNotebook()
     }
 
-    async showClassBrowser(session: MagikSession | undefined) {
+    async showClassBrowser() {
         // (session ?? this.currentSession)?.showClassBrowser()
-        this.classBrowser.setSession(session)
-        this.classBrowser.show()
+        if(!this.currentSession) {
+            vscode.window.showInformationMessage('No current session')
+            return
+        }
+        
+        await this.classBrowser.show()
+        this.refresh()
     }
 
     async restartSession(treeItem: MagikSessionTreeItem) {

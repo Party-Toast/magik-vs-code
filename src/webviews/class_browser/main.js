@@ -6,6 +6,9 @@
 (function main() {
   const vscode = acquireVsCodeApi();
 
+  const classBrowser = document.querySelector('#classBrowser')
+  const placeholder = document.querySelector('#placeholder')
+
   const methodInput = document.querySelector('#methodInput')
   const classInput = document.querySelector('#classInput')
 
@@ -94,12 +97,18 @@
   });
 
   /**
-   * Enable/disable the class browser inputs
+   * Enable/disable the class browser
    * @param {boolean} enabled
    */
   function enable(enabled) {
-    textfields.forEach(textfield => textfield.disabled = !enabled)
-    buttons.forEach(button => button.disabled = !enabled)
+    if(enabled) {
+      placeholder.setAttribute('hidden', 'hidden')
+      classBrowser.removeAttribute('hidden')
+    }
+    else {
+      classBrowser.setAttribute('hidden', 'hidden')
+      placeholder.removeAttribute('hidden')
+    }
   }
 
   /**
@@ -108,9 +117,6 @@
    * @returns
    */
   function focusInput(input) {
-    if (classInput.classList.contains('disabled')) {
-      return
-    }
     const selectedInput = input === 'method' ? methodInput : classInput
     selectedInput.focus();
     selectedInput.setSelectionRange(0, selectedInput.value.length);
@@ -446,6 +452,4 @@
     const firstLetter = line.charAt(0)
     return line.replace(firstLetter, firstLetter.toUpperCase())
   }
-
-  vscode.postMessage({type: 'ready'});
 }());

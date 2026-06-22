@@ -5,7 +5,7 @@ import { sessionManager } from '../extension'
 export class MagikSessionTreeItem extends vscode.TreeItem {
     session: MagikSession
 
-    constructor(session: MagikSession, type: 'Session' | 'Prompt') {
+    constructor(session: MagikSession, type: 'Session' | 'Prompt' | 'Class Browser') {
         switch (type) {
             case 'Session':
                 super(session.gisAliasName, vscode.TreeItemCollapsibleState.Expanded)
@@ -28,12 +28,21 @@ export class MagikSessionTreeItem extends vscode.TreeItem {
                 this.session = session
 
                 this.command = {
-                    title: `Magik: Show Prompt`,
-                    command: `magik-vs-code.showPrompt`,
+                    title: 'Show Prompt',
+                    command: 'magik-vs-code.showPrompt',
                     arguments: [session]
                 }
 
                 this.description = session.notebook.uri.path
+                break
+            case 'Class Browser':
+                super(type)
+                this.session = session
+
+                this.command = {
+                    title: 'Show Class Browser',
+                    command: 'magik-vs-code.showClassBrowser'
+                }
                 break
         }
     }

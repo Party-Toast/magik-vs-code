@@ -1,9 +1,7 @@
 import * as vscode from 'vscode'
 import { getContext } from '../utils/state'
-import { createInterface } from 'readline'
-import { ChildProcessWithoutNullStreams, spawn } from 'child_process'
+import { Interface } from 'readline'
 import { config } from '../extension'
-import path from 'path'
 import { Regex } from '../enums/Regex'
 import { MagikClassBrowserMethod } from './MagikClassBrowserMethod'
 import { MagikSession } from './MagikSession'
@@ -26,6 +24,7 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
         maxResults: 200
     }
     methodBuffer: MagikClassBrowserMethod[] = []
+    lineReader?: Interface
 
     constructor() {
         this.context = getContext()
@@ -43,30 +42,26 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
     }
 
     public setSession(session: MagikSession | undefined) {
+        this.session?.classBrowserInterface?.off('list', this.processLine.bind(this))
         this.session = session
 
-        // TODO: handle session
-    }
-
-    private start(gisVersionPath: string) {
-        const methodFinderPath = path.join(gisVersionPath, 'etc', 'x86', 'mf_connector.exe')
-        const startCommand = `${methodFinderPath} -m //./pipe/method_finder/${this.processID}`
-        this.process = spawn(startCommand, {
-            shell: true
-        })
-
-        const lineReader = createInterface({
-            input: this.process.stdout,
-            output: this.process.stdin
-        })
-
-        lineReader.on('line', line => {
-            this.processLine(line)
-        })
+        if(this.session?.classBrowserInterface) {
+            this.session.classBrowserInterface.on('list', this.processLine.bind(this))
+            this.toggleWebviewInputs(true)
+            this.search()
+        }
+        else {
+            this.toggleWebviewInputs(false)
+        }
     }
 
     private sendToProcess(line: string) {
-        this.process!.stdin.write(line + '\n')
+        const classBrowserInterface = this.session?.classBrowserInterface
+
+        if(classBrowserInterface) {
+            // Write to interface output, i.e. process input
+            (classBrowserInterface as any).output.write(line + '\n')
+        }
     }
 
     processLine(line: string) {
@@ -105,7 +100,6 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
                 // If none of the above and not empty, must be args
                 this.methodBuffer.at(-1)?.setArguments(line)
                 break
-
         }
     }
 
@@ -132,12 +126,11 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
         const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>('vscode.executeDocumentSymbolProvider', uri)
         const symbol = symbols.find(symbol => symbol.name === fullMethodName)
 
+        const editor = await vscode.window.showTextDocument(document)
         if(!symbol) {
             vscode.window.showWarningMessage(`Source file found, but unable to locate ${fullMethodName}`)
             return
         }
-
-        const editor = await vscode.window.showTextDocument(document)
         editor.revealRange(symbol.range, vscode.TextEditorRevealType.InCenter)
     }
 
@@ -166,8 +159,8 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
 
             switch(message.type) {
                 case 'ready':
-                    this.toggleWebviewInputs()
-                    this.focus()
+                    this.toggleWebviewInputs(!!this.session?.classBrowserInterface)
+                    this.focusInWebview()
                     break
                 case 'textfield':
                     name = message.name as 'class' | 'method'
@@ -188,16 +181,29 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
         })
     }
 
-    show() {
+    async show() {
+        if(!this.session || !this.session.isActive()) {
+            console.log("No current or active session")
+            return
+        }
+
+        if(!this.session.classBrowserInterface) {
+            const classBrowserInterface = await this.session.startClassBrowser()
+            classBrowserInterface?.on('line', this.processLine.bind(this))
+            this.search()
+        }
+
+        this.toggleWebviewInputs(true)
+
         if(!this.view || !this.view.visible) {
             vscode.commands.executeCommand('magik-vs-code.classBrowser.focus')
         }
         else {
-            this.focus()
+            this.focusInWebview()
         }
     }
 
-    focus(input?: 'class' | 'method') {
+    focusInWebview(input?: 'class' | 'method') {
         this.view?.webview.postMessage({
             type: 'focus',
             input
@@ -221,11 +227,11 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
             this.searchParameters.debug ? 'add debug' : 'unadd debug',
             `method_cut_off ${this.searchParameters.maxResults}`,
             'print_curr_methods'
-        ];
+        ]
         this.sendToProcess(query.join('\n'))
     }
 
-    toggleWebviewInputs(enabled = true) {
+    toggleWebviewInputs(enabled: boolean) {
         this.view?.webview.postMessage({
             type: 'enable',
             enabled
@@ -266,25 +272,30 @@ export class MagikClassBrowser implements vscode.WebviewViewProvider {
 				<title>Magik Class Browser</title>
 			</head>
 			<body>
-				<div class="search-container">
-                    <input id="classInput" name="class" class="search-input" placeholder="Class name" disabled/>
-                    <input id="methodInput" name="method" class="search-input" placeholder="Method name" disabled/>
-                    <button id="localButton" name="local" class="info-button" disabled>Local</button>
-                    <button id="argsButton" name="args" class="info-button" disabled>Args</button>
-                    <button id="commentsButton" name="comments" class="info-button" disabled>Comments</button>
-                    <button id="basicButton" name="basic" class="info-button" disabled>Basic</button>
-                    <button id="advancedButton" name="advanced" class="info-button" disabled>Advanced</button>
-                    <button id="restrictedButton" name="restricted" class="info-button" disabled>Restricted</button>
-                    <button id="deprecatedButton" name="deprecated" class="info-button" disabled>Deprecated</button>
-                    <button id="debugButton" name="debug" class="info-button" disabled>Debug</button>
+                <div id="classBrowser" hidden>
+                    <div class="search-container">
+                        <input id="classInput" name="class" class="search-input" placeholder="Class name"/>
+                        <input id="methodInput" name="method" class="search-input" placeholder="Method name"/>
+                        <button id="localButton" name="local" class="info-button">Local</button>
+                        <button id="argsButton" name="args" class="info-button">Args</button>
+                        <button id="commentsButton" name="comments" class="info-button">Comments</button>
+                        <button id="basicButton" name="basic" class="info-button" selected>Basic</button>
+                        <button id="advancedButton" name="advanced" class="info-button" selected>Advanced</button>
+                        <button id="restrictedButton" name="restricted" class="info-button" selected>Restricted</button>
+                        <button id="deprecatedButton" name="deprecated" class="info-button" selected>Deprecated</button>
+                        <button id="debugButton" name="debug" class="info-button" selected>Debug</button>
+                    </div>
+                    <div>
+                        <span class="results-length"></span>
+                    </div>
+                    <ul class="results-list">
+                    </ul>
                 </div>
-                <div>
-                    <span class="results-length"></span>
+                <div id="placeholder">
+                    <p>Class browser not active in current session</p>
                 </div>
-				<ul class="results-list">
-				</ul>
                 <script src="${scriptUri}"></script>
 			</body>
-			</html>`;
+			</html>`
     }
 }
