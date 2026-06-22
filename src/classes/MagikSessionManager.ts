@@ -109,7 +109,7 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
 
         const notebook = vscode.window.activeNotebookEditor?.notebook
         if(!notebook) {
-            vscode.window.showInformationMessage('Ensure a Magik notebook is in focus when attempting to restart a sesssion.')
+            vscode.window.showInformationMessage('Ensure a Magik notebook is in focus when attempting to restart a session.')
             return
         }
 
