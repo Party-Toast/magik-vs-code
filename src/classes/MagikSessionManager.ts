@@ -100,15 +100,26 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
         this.refresh()
     }
 
-    async restartSession(treeItem: MagikSessionTreeItem) {
-        if(treeItem.session.isActive()) {
-            vscode.window.showWarningMessage('Cannot restart an active session.')
+    async restartSession(treeItem?: MagikSessionTreeItem) {
+        if(treeItem) {
+            treeItem.session.restart()
+            this.refresh()
             return
         }
 
-        await treeItem.session.restart()
+        const notebook = vscode.window.activeNotebookEditor?.notebook
+        if(!notebook) {
+            vscode.window.showInformationMessage('Ensure a Magik notebook is in focus when attempting to restart a sesssion.')
+            return
+        }
 
-        // FIXME: session might not be considered active yet when refresh is called. Either fix await after restart, or check if process.on('ready') emits anything
+        const session = this.sessions.find(session => session.notebook === notebook)
+        if(!session) {
+            vscode.window.showInformationMessage(`No session found for Magik notebook ${notebook.uri.path}.`)
+            return
+        }
+
+        session.restart()
         this.refresh()
     }
     

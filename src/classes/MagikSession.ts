@@ -129,6 +129,11 @@ export class MagikSession {
     }
 
     async restart() {
+        if(this.isActive()) {
+            vscode.window.showWarningMessage('Cannot restart an active session.')
+            return
+        }
+
         this.startProcess()
         await this.showNotebook()
         await vscode.commands.executeCommand('notebook.focusBottom')
