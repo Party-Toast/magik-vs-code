@@ -6,16 +6,19 @@ import { MagikCodeLensProvider } from './MagikCodeLensProvider'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import { MagikClassBrowser } from './MagikClassBrowser'
 
 export class MagikSessionManager implements vscode.TreeDataProvider<MagikSessionTreeItem>{
     public sessions: MagikSession[] = []
     public currentSession: MagikSession | undefined
+    public classBrowser: MagikClassBrowser
     public codeLensProvider: MagikCodeLensProvider
     
     private _onDidChangeTreeData = new vscode.EventEmitter<MagikSessionTreeItem | undefined | void>()
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event    
 
     constructor() {
+        this.classBrowser = new MagikClassBrowser()
         this.codeLensProvider = new MagikCodeLensProvider()
         this.registerCommands()
     }
@@ -47,16 +50,19 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
     }
     
     getChildren(element?: MagikSessionTreeItem): MagikSessionTreeItem[] {
-        if (element) {
-            return [
-                new MagikSessionTreeItem(element.session, 'Prompt'),
-                new MagikSessionTreeItem(element.session, 'Class Browser')
-            ]
+        if (!element) {
+            return this.sessions.map(session => new MagikSessionTreeItem(session, 'Session'))
         }
 
-        return this.sessions.map(session => {
-            return new MagikSessionTreeItem(session, 'Session')
-        })
+        const childElements = [
+            new MagikSessionTreeItem(element.session, 'Prompt'),
+        ]
+
+        if(element.session.classBrowserInterface) {
+            childElements.push(new MagikSessionTreeItem(element.session, 'Class Browser'))
+        }
+        
+        return childElements
     }
 
     refresh() {
@@ -69,6 +75,7 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
             this.currentSession = activeSessions[0]
         }
 
+        this.classBrowser.setSession(this.currentSession)
         this._onDidChangeTreeData.fire()
     }
     
@@ -82,19 +89,37 @@ export class MagikSessionManager implements vscode.TreeDataProvider<MagikSession
         (session ?? this.currentSession)?.showNotebook()
     }
 
-    async showClassBrowser(session: MagikSession | undefined) {
-        (session ?? this.currentSession)?.showClassBrowser()
+    async showClassBrowser() {
+        // (session ?? this.currentSession)?.showClassBrowser()
+        if(!this.currentSession) {
+            vscode.window.showInformationMessage('No current session')
+            return
+        }
+        
+        await this.classBrowser.show()
+        this.refresh()
     }
 
-    async restartSession(treeItem: MagikSessionTreeItem) {
-        if(treeItem.session.isActive()) {
-            vscode.window.showWarningMessage('Cannot restart an active session.')
+    async restartSession(treeItem?: MagikSessionTreeItem) {
+        if(treeItem) {
+            treeItem.session.restart()
+            this.refresh()
             return
         }
 
-        await treeItem.session.restart()
+        const notebook = vscode.window.activeNotebookEditor?.notebook
+        if(!notebook) {
+            vscode.window.showInformationMessage('Ensure a Magik notebook is in focus when attempting to restart a session.')
+            return
+        }
 
-        // FIXME: session might not be considered active yet when refresh is called. Either fix await after restart, or check if process.on('ready') emits anything
+        const session = this.sessions.find(session => session.notebook === notebook)
+        if(!session) {
+            vscode.window.showInformationMessage(`No session found for Magik notebook ${notebook.uri.path}.`)
+            return
+        }
+
+        session.restart()
         this.refresh()
     }
     

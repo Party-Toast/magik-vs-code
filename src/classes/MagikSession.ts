@@ -6,14 +6,9 @@ import { ChildProcessWithoutNullStreams, spawn } from 'child_process'
 import { magikNotebookController } from './magikNotebookController'
 import { Style } from '../enums/Style'
 import { Regex } from '../enums/Regex'
-import { getContext, getState } from '../utils/state'
-import { MagikCodeLensProvider } from './MagikCodeLensProvider'
-import { MagikClassBrowser } from './MagikClassBrowser'
-import { createInterface } from 'readline'
+import { createInterface, Interface } from 'readline'
 import { EventEmitter } from 'stream'
 import { once } from 'events'
-import { GisVersion } from '../interfaces/GisVersion'
-import { LayeredProduct } from '../interfaces/LayeredProduct'
 import { sessionManager } from '../extension'
 
 export class MagikSession {
@@ -23,13 +18,12 @@ export class MagikSession {
     environmentPath?: string
 
     process!: ChildProcessWithoutNullStreams
+    classBrowserInterface?: Interface
     notebook!: vscode.NotebookDocument
     lastExecutedCell?: vscode.NotebookCell
     cellExecution?: vscode.NotebookCellExecution
     currentOutput: string[]
     hideNextOutput: Boolean
-
-    classBrowser?: MagikClassBrowser
 
     eventEmitter: EventEmitter
 
@@ -72,6 +66,38 @@ export class MagikSession {
         this.process.on('exit', this.processSessionExit.bind(this))
     }
 
+    async startClassBrowser() {
+        if(!this.isActive()) {
+            vscode.window.showErrorMessage('Session no longer active.')
+            return
+        }
+
+        if(this.classBrowserInterface) {
+            return this.classBrowserInterface
+        }
+
+        await this.send('method_finder.lazy_start?', undefined, true)
+        const lastOutput = await this.send('system.process_id', undefined, true)
+        const processID = Number(lastOutput[0])
+        if(isNaN(processID) || processID === 0) {
+            vscode.window.showErrorMessage('Unable to start class browser, please try again.')
+            return
+        }
+
+        const methodFinderPath = path.join(this.gisVersionPath, 'etc', 'x86', 'mf_connector.exe')
+        const startCommand = `${methodFinderPath} -m //./pipe/method_finder/${processID}`
+        const process = spawn(startCommand, {
+            shell: true
+        })
+
+        this.classBrowserInterface = createInterface({
+            input: process.stdout,
+            output: process.stdin
+        })
+
+        return this.classBrowserInterface
+    }
+
     async showKillPrompt() {
         if(!this.isActive()) {
             return vscode.window.showInformationMessage('Session has already been killed.')
@@ -94,8 +120,6 @@ export class MagikSession {
     }
 
     async kill(force?: Boolean) {
-        this.classBrowser?.toggleWebviewInputs(false)
-
         if(this.isActive() && !force) {
             await this.send(`write("Session killed - ${Date()}")`)
             await this.send('quit()')
@@ -105,6 +129,11 @@ export class MagikSession {
     }
 
     async restart() {
+        if(this.isActive()) {
+            vscode.window.showWarningMessage('Cannot restart an active session.')
+            return
+        }
+
         this.startProcess()
         await this.showNotebook()
         await vscode.commands.executeCommand('notebook.focusBottom')
@@ -137,6 +166,8 @@ export class MagikSession {
             this.cellExecution.end(undefined, Date.now())
         }
         this.eventEmitter.emit('magik-ready', this.currentOutput)
+        this.classBrowserInterface = undefined
+
         sessionManager.refresh()
     }
 
@@ -190,22 +221,6 @@ export class MagikSession {
         await this.send(`load_file("${tempFilePath}", _unset, "${editor.document.uri.path}")`)
     }
 
-    /**
-     * Shows the class browser. If @see classBrowser is not yet set, starts it first.
-     */
-    async showClassBrowser() {
-        if(!this.classBrowser) {
-            await this.send('method_finder.lazy_start?', undefined, true)
-            const lastOutput = await this.send('system.process_id', undefined, true)
-            const processID = Number(lastOutput[0])
-            if(isNaN(processID) || processID === 0) {
-                vscode.window.showErrorMessage('Unable to start class browser, please try again.')
-                return
-            }
-            this.classBrowser = new MagikClassBrowser(Number(processID), this)
-        }
-        this.classBrowser.show()
-    }
 
     /**
      * Sends a string to the Magik session.

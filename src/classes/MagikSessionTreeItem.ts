@@ -6,35 +6,44 @@ export class MagikSessionTreeItem extends vscode.TreeItem {
     session: MagikSession
 
     constructor(session: MagikSession, type: 'Session' | 'Prompt' | 'Class Browser') {
-        if(type !== 'Session') {
-            super(type)
-            this.session = session
+        switch (type) {
+            case 'Session':
+                super(session.gisAliasName, vscode.TreeItemCollapsibleState.Expanded)
+                this.session = session
 
-            this.command = {
-                title: `Magik: Show ${type}`,
-                command: `magik-vs-code.show${type.replaceAll(' ', '')}`,
-                arguments: [session]
-            }
+                if(session.isActive()) {
+                    this.contextValue = 'ActiveSession'
+                }
+                else {
+                    this.contextValue = 'KilledSession'
+                    this.description = 'Killed'
+                }
 
-            if(type === 'Prompt') {
+                if(sessionManager.currentSession === this.session) {
+                    this.iconPath = new vscode.ThemeIcon('debug-connected-compact')
+                }
+                break
+            case 'Prompt':
+                super(type)
+                this.session = session
+
+                this.command = {
+                    title: 'Show Prompt',
+                    command: 'magik-vs-code.showPrompt',
+                    arguments: [session]
+                }
+
                 this.description = session.notebook.uri.path
-            }
-            return
-        }
+                break
+            case 'Class Browser':
+                super(type)
+                this.session = session
 
-        super(session.gisAliasName, vscode.TreeItemCollapsibleState.Expanded)
-        this.session = session
-
-        if(session.isActive()) {
-            this.contextValue = 'ActiveSession'
-        }
-        else {
-            this.contextValue = 'KilledSession'
-            this.description = 'Killed'
-        }
-
-        if(sessionManager.currentSession === this.session) {
-            this.iconPath = new vscode.ThemeIcon('debug-connected')
+                this.command = {
+                    title: 'Show Class Browser',
+                    command: 'magik-vs-code.showClassBrowser'
+                }
+                break
         }
     }
 }
